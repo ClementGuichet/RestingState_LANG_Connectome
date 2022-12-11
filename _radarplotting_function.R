@@ -54,50 +54,6 @@ radarplotting <- function(dataframe, max, min, mfrow_x, mfrow_y, inverse_grad = 
   }
 }
 
-radarplotting_unrounded_grad <- function(dataframe, max, min, mfrow_x, mfrow_y, title_fill, inverse_grad = FALSE, palette, alpha, label_size) {
-  # Set the max & min of each column
-  if (inverse_grad == FALSE) {
-    max_min <- as.data.frame(t(data.frame(max = rep(max, times = ncol(dataframe)), min = rep(min, times = ncol(dataframe)))))
-  } else {
-    max_min <- as.data.frame(t(data.frame(max = rep(min, times = ncol(dataframe)), min = rep(max, times = ncol(dataframe)))))
-  }
-  rownames(max_min) <- c("Max", "Min")
-  names(max_min) <- names(dataframe)
-
-  Radar_plot_1 <- rbind(max_min, dataframe)
-
-  # Reduce plot margin using par()
-  # Split the screen in 3 parts
-  op <- par(mar = c(1, 2, 2, 2))
-  par(mfrow = c(mfrow_x, mfrow_y))
-
-  for (i in 1:nrow(dataframe)) {
-    # When plotting a specific row, remove any columns that takes NA
-    Radar_plot_subset <- Radar_plot_1[c(1, 2, i + 2), ] %>%
-      select_if(~ !any(is.na(.))) %>%
-      arrange(.)
-    # Define colors and titles
-    colors <- palette
-    display_max <- max(Radar_plot_subset)
-    display_min <- min(Radar_plot_subset)
-    display_min_2 <- min(Radar_plot_subset) + (display_max - display_min) / 4
-    display_min_3 <- min(Radar_plot_subset) + 2 * (display_max - display_min) / 4
-    display_min_4 <- min(Radar_plot_subset) + 3 * (display_max - display_min) / 4
-
-    if (inverse_grad == FALSE) {
-      create_beautiful_radarchart(
-        data = Radar_plot_subset, caxislabels = c(display_min, display_min_2, display_min_3, display_min_4, display_max),
-        color = colors[i], title = title_fill, alpha = alpha, label_size = label_size
-      )
-    } else {
-      create_beautiful_radarchart(
-        data = Radar_plot_subset, caxislabels = c(display_max, display_min_4, display_min_3, display_min_2, display_min),
-        color = colors[i], title = title_fill, alpha = alpha, label_size = label_size
-      )
-    }
-  }
-}
-
 
 radarplotting_overlap <- function(dataframe, max, min, mfrow_x, mfrow_y, title_fill, inverse_grad = FALSE, palette, alpha, label_size) {
   # Set the max & min of each column
