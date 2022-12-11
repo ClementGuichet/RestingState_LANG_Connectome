@@ -60,7 +60,12 @@ plotly::ggplotly(
     ylab("") +
     scale_x_continuous(breaks = c(0.05, 0.07, 0.1, 0.12, 0.15, 0.17, 0.2, 0.25)) +
     scale_y_continuous(breaks = seq(0, 1, 0.05)) +
-    coord_cartesian(ylim = c(0.2, 1)) +
+    coord_cartesian(ylim = c(0.25, 1)) +
+    geom_rect(aes(xmin = 0.14,
+                  xmax = 0.16,
+                  ymin = 0.25,
+                  ymax = 1.01),
+              fill = "red", alpha = 0.2, color = "red", linewidth = 0.1) +
     ggpubr::theme_pubclean()
 )
 
