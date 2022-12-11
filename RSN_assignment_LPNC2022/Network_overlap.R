@@ -18,12 +18,12 @@ overlap_tight <- as.data.frame(fromJSON('Overlap_tight.json')) #JSON for the tig
 
 
 # Import Power labels and InLang data
-Label <- read.delim("D:/Analyses/_Power264_to_CABNP/0_Generate_PowerAtlas/Power_264.txt", header = F) %>% 
+Label <- read.delim("path/to/Power_264.txt", header = F) %>% 
   plyr::rename(c("V1" = "Index.Power264")) %>% 
   plyr::rename(c("V2" = "Region"))
 
-# DO NOT MODIFY - ORIGINAL DATA PROVIDED ONLY
-InLang <- readxl::read_xlsx("D:/Analyses/_Power264_to_CABNP/LANG_131_FC.xlsx", col_names = T) %>% 
+# DO NOT MODIFY - ORIGINAL DATA PROVIDED ONLY (Roger et al., 2022)
+InLang <- readxl::read_xlsx("path/to/LANG_131_FC.xlsx", col_names = T) %>% 
   janitor::row_to_names(1) %>% 
   select(Index.Power264, CAB_NP_assign, LANG_Net_assign)
 
