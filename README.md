@@ -17,5 +17,9 @@ Features
  
 ## Author
 **Clément Guichet**
-- [Email](mailto:Clement.Guichet@univ-grenoble-alpes.fr?subject=Hi% "Hi!")
+- Clement.Guichet@univ-grenoble-alpes.fr
 - [ResearchGate](https://www.researchgate.net/profile/Clement-Guichet)
+
+## Lab
+- CNRS UMR 5105 - Laboratoire Psychologie et NeuroCognition (LPNC)
+- https://lpnc.univ-grenoble-alpes.fr/laboratoire-0
