@@ -79,6 +79,52 @@ fviz_pca_ind(pc,
   ggtitle("2D PCA-plot of functional roles") +
   theme(plot.title = element_text(hjust = 0.5))
 
+
+################################################################################
+# Box plot ---------------------------------------------------------------------
+################################################################################
+
+data_post_clustering %>%
+  group_by(cluster) %>%
+  get_summary_stats(Age, type = "full") %>%
+  arrange(cluster)
+
+
+data_box <- data_post_clustering %>%
+  pivot_longer(
+    cols = !c("Subj_ID", "cluster", "Age"),
+    names_to = "Metrics",
+    values_to = "Metric_value"
+  ) %>%
+  plyr::rename(c("cluster" = "Median_Age"))
+
+
+data_box$Metrics <- factor(data_box$Metrics, levels = c(
+  "Connector", "Satellite", "Provincial", "Peripheral",
+  "Local_Bridge", "Global_Bridge", "Super_Bridge", "Balance_eff"
+))
+
+data_box_sig <- data_box %>%
+  group_by(Metrics) %>%
+  rstatix::t_test(Metric_value ~ Median_Age, ref.group = "68") %>%
+  adjust_pvalue(method = "fdr") %>%
+  add_significance("p.adj") %>%
+  add_xy_position(x = "Metrics")
+
+ggplot(data_box, aes(x = Metrics, y = Metric_value)) +
+  geom_boxplot(aes(fill = Median_Age)) +
+  scale_fill_brewer(palette = "Dark2") +
+  theme_pubr() +
+  stat_pvalue_manual(data_box_sig,
+                     label = "p.adj.signif",
+                     tip.length = 0.01,
+                     hide.ns = TRUE,
+                     bracket.nudge.y = -5
+  )
+
+# Variabilité inter_sujet semble s'exprimer davantage tôt dans la vie
+
+
 ################################################################################
 # Hubness profile across clusters  ---------------------------------------------
 ################################################################################
@@ -156,50 +202,6 @@ legend(
   text.col = "black", cex = 1, pt.cex = 2
 )
 
-
-################################################################################
-# Box plot ---------------------------------------------------------------------
-################################################################################
-
-data_post_clustering %>%
-  group_by(cluster) %>%
-  get_summary_stats(Age, type = "full") %>%
-  arrange(cluster)
-
-
-data_box <- data_post_clustering %>%
-  pivot_longer(
-    cols = !c("Subj_ID", "cluster", "Age"),
-    names_to = "Metrics",
-    values_to = "Metric_value"
-  ) %>%
-  plyr::rename(c("cluster" = "Median_Age"))
-
-
-data_box$Metrics <- factor(data_box$Metrics, levels = c(
-  "Connector", "Satellite", "Provincial", "Peripheral",
-  "Local_Bridge", "Global_Bridge", "Super_Bridge", "Balance_eff"
-))
-
-data_box_sig <- data_box %>%
-  group_by(Metrics) %>%
-  rstatix::t_test(Metric_value ~ Median_Age, ref.group = "68") %>%
-  adjust_pvalue(method = "fdr") %>%
-  add_significance("p.adj") %>%
-  add_xy_position(x = "Metrics")
-
-ggplot(data_box, aes(x = Metrics, y = Metric_value)) +
-  geom_boxplot(aes(fill = Median_Age)) +
-  scale_fill_brewer(palette = "Dark2") +
-  theme_pubr() +
-  stat_pvalue_manual(data_box_sig,
-                     label = "p.adj.signif",
-                     tip.length = 0.01,
-                     hide.ns = TRUE,
-                     bracket.nudge.y = -5
-  )
-
-# Variabilité inter_sujet semble s'exprimer davantage tôt dans la vie
 
 # Difference in the hubness profile --------------------------------------------
 # Difference in the proportion of each functional role within each RSN for the two selected clusters
