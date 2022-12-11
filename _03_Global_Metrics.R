@@ -71,14 +71,18 @@ plotly::ggplotly(
 
 
 # AMI for all threshold consensus clustering
-# source("_NMI&AMI_functions.R")
-# # Make sure this is indexed on 131 observations only
-# data_AMI <- data_per_region_combined_bu %>% subset(threshold == "0.2")
-#
-# a <- AMI_func(factor(data_AMI$Community_vector_0.05), factor(data_AMI$Community_vector_0.2))
-# b <- AMI_func(factor(data_AMI$Community_vector_0.07), factor(data_AMI$Community_vector_0.2))
-# c <- AMI_func(factor(data_AMI$Community_vector_0.1), factor(data_AMI$Community_vector_0.2))
-# d <- AMI_func(factor(data_AMI$Community_vector_0.15), factor(data_AMI$Community_vector_0.2))
-# e <- AMI_func(factor(data_AMI$Community_vector_0.25), factor(data_AMI$Community_vector_0.2))
-# # Mean AMI with partitions at other thresholds
-# (a + b + c + d + e)/5
+source("_NMI&AMI_functions.R")
+# Make sure this is indexed on 131 observations only
+data_AMI <- data_full_per_region %>% subset(threshold == "0.15")
+
+a <- AMI_func(factor(data_AMI$Consensus_vector_0.05), factor(data_AMI$Consensus_vector_0.15))
+b <- AMI_func(factor(data_AMI$Consensus_vector_0.07), factor(data_AMI$Consensus_vector_0.15))
+c <- AMI_func(factor(data_AMI$Consensus_vector_0.1), factor(data_AMI$Consensus_vector_0.15))
+d <- AMI_func(factor(data_AMI$Consensus_vector_0.12), factor(data_AMI$Consensus_vector_0.15))
+e <- AMI_func(factor(data_AMI$Consensus_vector_0.17), factor(data_AMI$Consensus_vector_0.15))
+f <- AMI_func(factor(data_AMI$Consensus_vector_0.2), factor(data_AMI$Consensus_vector_0.15))
+g <- AMI_func(factor(data_AMI$Consensus_vector_0.25), factor(data_AMI$Consensus_vector_0.15))
+# Mean AMI with partitions at other thresholds
+(a + b + c + d + e + f + g)/7
+
+# 78% of AMI between the affiliation vectors at different thresholds

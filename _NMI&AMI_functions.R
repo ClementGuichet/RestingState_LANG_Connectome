@@ -1,3 +1,5 @@
+library(infotheo)
+
 # EMI, NMI & AMI functions-----------------------------------------
 EMI_func <- function(s1, s2, l1, l2, n) { # Expected mutual information
   s_emi <- 0
