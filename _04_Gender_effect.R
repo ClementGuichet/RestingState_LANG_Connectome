@@ -15,39 +15,13 @@ library(brunnermunzel)
 library(jsonlite)
 
 rm(list = ls())
-options(max.print = 99999)
 
 source("_03_Hub_classification.R")
 source("_radarplotting_function.R")
 source("_NMI&AMI_functions.R")
 
-# Define normalizing function
-min_max_norm <- function(x) {
-  (x - min(x)) / (max(x) - min(x))
-}
-
-# Define palette for visualization
-custom_palette <- c(
-  "Auditory" = "#FF99FF",
-  "Language" = "#FF6600",
-  "CON" = "#9900CC",
-  "DMN" = "#FF0033",
-  "FPN" = "#FFCC33",
-  "SMN" = "#0099CC",
-  "DAN" = "#33FF66",
-  "Visual_1" = "#CCCCCC",
-  "Visual_2" = "#CCCCCC",
-  "PMM" = "#CC0033",
-  "VMM" = "#CC0033",
-  "NaN" = "white",
-  "Multi" = "white",
-  "Multi/SM" = "white"
-)
-
-################################################################################
-
 # ~~~~~~~~~~~ Gender effect ~~~~~~~~~~~
-by(data_full_per_subject %>% subset(threshold == "0.15"), factor((data_per_subject_combined_bu %>% subset(threshold == "0.15"))$Gender), summary)
+by(data_full_per_subject %>% subset(threshold == "0.15"), factor((data_full_per_subject %>% subset(threshold == "0.15"))$Gender), summary)
 
 data_stat_gender <- data_functional_role %>% 
   group_by(Subj_ID, CAB_NP_assign, Region, Gender) %>%
@@ -598,7 +572,7 @@ legend(
 )
 
 # Hubness profile within each RSN
-delta_hubness_profile <- function(cluster1, cluster2, max, min, alpha) {
+delta_hubness_profile <- function(cluster1, cluster2, alpha) {
   # Retain only the regions yielded by hub detection procedure across the two genders
 
   # Hub region specific to each subject yielded by hub detection procedure
@@ -614,22 +588,44 @@ delta_hubness_profile <- function(cluster1, cluster2, max, min, alpha) {
     merge(., data_gender_1_helper_vector %>% dplyr::select(helper_vector, Subj_ID, Gender, Region),
       by = c("helper_vector", "Region")
     )
+  
+  Radar_hub_RSN <- data_gender_final %>% 
+    group_by(Gender, `1st_network`) %>%
+    summarise(n = n()) %>%
+    mutate(freq = n / sum(n)) %>%
+    dplyr::select(-n) %>% 
+    spread(`1st_network`, freq) %>% 
+    remove_rownames() %>% column_to_rownames("Gender") %>% 
+    mutate_at(vars(everything()), funs(. * 100))
+  
+  radarplotting_overlap(Radar_hub_RSN, 25, 0, 1, 1,
+                        alpha = 0.05, label_size = 1,
+                        title_fill = "Distribution of hubs regions across RSNs",
+                        palette = RColorBrewer::brewer.pal(8, "Dark2")
+  )
+  
+  legend(
+    x = "bottomleft", title = "Gender",
+    legend = rownames(Radar_hub_RSN), horiz = TRUE,
+    bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
+    text.col = "black", cex = 1, pt.cex = 2
+  )
 
   delta_proportion_a <- data_gender_final %>%
     group_by(`1st_network`, Gender, Hub_consensus_gender) %>%
     summarise(n = n()) %>%
-    mutate(freq = n / sum(n)) %>%
+    mutate(freq = n / sum(n)) %>% 
     # Make sure comparisons with missing functional roles can be achieved
     spread(Hub_consensus_gender, freq) %>%
     dplyr::select(-n) %>%
-    mutate_all(., ~ replace(., is.na(.), 0)) %>%
+    mutate_all(., ~ replace(., is.na(.), 0)) %>% 
     group_by(`1st_network`, Gender) %>%
-    summarize_at(vars(Connector:Satellite), sum) %>%
+    summarize_at(vars(Connector:Satellite), sum) %>% 
     pivot_longer(cols = !c("1st_network", "Gender"), names_to = "Hub_consensus_gender", values_to = "freq") %>%
     # Compute the difference in proportion of a given functional role within each RSN
-    arrange(desc(Gender)) %>%
+    arrange(Gender) %>% 
     group_by(`1st_network`, Hub_consensus_gender) %>%
-    mutate(delta_freq = freq / lag(freq)) %>%
+    mutate(delta_freq = freq / lag(freq)) 
     dplyr::select(-Gender) %>%
     na.omit()
 
@@ -645,31 +641,32 @@ delta_hubness_profile <- function(cluster1, cluster2, max, min, alpha) {
     summarize_at(vars(Global_Bridge, Local_Bridge, Super_Bridge), sum) %>%
     pivot_longer(cols = !c("1st_network", "Gender"), names_to = "Bridgeness", values_to = "freq") %>%
     # Compute the difference in proportion of a given functional role within each RSN
-    arrange(desc(Gender)) %>%
+    arrange(Gender) %>%
     group_by(`1st_network`, Bridgeness) %>%
-    mutate(delta_freq = freq / lag(freq)) %>%
+    mutate(delta_freq = freq / lag(freq)) %>% 
     dplyr::select(-Gender) %>%
     na.omit()
 
   Radar_functional_role_RSN_delta <-
     delta_proportion_a %>%
-    dplyr::select(`1st_network`, Hub_consensus_gender, delta_freq) %>%
-    mutate(delta_freq = ifelse(delta_freq == "Inf", max, delta_freq)) %>%
-    spread(`1st_network`, delta_freq) %>%
-    mutate_all(., ~ replace(., is.na(.), 0)) %>%
+    dplyr::select(`1st_network`, Hub_consensus_gender, delta_freq) %>% 
     subset(Hub_consensus_gender != "None") %>%
+    mutate(`1st_network` = ifelse(delta_freq == "Inf"|delta_freq == 0, paste0(`1st_network`, "*"), `1st_network`)) %>% 
+    mutate(delta_freq = ifelse(delta_freq == "Inf", 1, delta_freq)) %>%
+    spread(`1st_network`, delta_freq) %>%
     remove_rownames() %>%
     column_to_rownames(var = "Hub_consensus_gender")
 
 
-  radarplotting_overlap(Radar_functional_role_RSN_delta, max, min, 1, 1,
+  radarplotting_overlap(Radar_functional_role_RSN_delta, 3, -1, 1, 1,
     alpha = alpha, label_size = 1,
-    title_fill = "Delta of the hubness profile between men and women\n Each value represent the ratio in proportion of functional role within each RSN. A positive ratio favors women",
+    title_fill = "Ratio of the proportion of functional roles between genders. A positive ratio favors men",
     palette = RColorBrewer::brewer.pal(8, "Dark2")
   )
 
   legend(
-    x = "bottomleft", legend = rownames(Radar_functional_role_RSN_delta), horiz = TRUE,
+    x = "bottomleft", title = "\n * indicates there were no Provincial hubs in Visual 2 for men",
+    legend = rownames(Radar_functional_role_RSN_delta), horiz = TRUE,
     bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
     text.col = "black", cex = 1, pt.cex = 2
   )
@@ -677,24 +674,25 @@ delta_hubness_profile <- function(cluster1, cluster2, max, min, alpha) {
   Radar_functional_role_RSN_delta <-
     delta_proportion_b %>%
     dplyr::select(`1st_network`, Bridgeness, delta_freq) %>%
-    mutate(delta_freq = ifelse(delta_freq == "Inf", max, delta_freq)) %>%
-    spread(`1st_network`, delta_freq) %>%
-    mutate_all(., ~ replace(., is.na(.), 0)) %>%
     subset(Bridgeness != "None") %>%
+    mutate(`1st_network` = ifelse(delta_freq == "Inf"|delta_freq == 0, paste0(`1st_network`, "*"), `1st_network`)) %>% 
+    mutate(delta_freq = ifelse(delta_freq == "Inf", 1, delta_freq)) %>%
+    spread(`1st_network`, delta_freq) %>%
     remove_rownames() %>%
     column_to_rownames(var = "Bridgeness")
 
-  radarplotting_overlap(Radar_functional_role_RSN_delta, max, min, 1, 1,
+  radarplotting_overlap(Radar_functional_role_RSN_delta, 2, 0, 1, 1,
     alpha = alpha, label_size = 1,
-    title_fill = "Delta of the hubness profile between men and women\n Each value represent the ratio in proportion of functional role within each RSN. A positive ratio favors women",
+    title_fill = "Ratio of the proportion of functional roles between genders. A positive ratio favors men",
     palette = RColorBrewer::brewer.pal(8, "Dark2")
   )
 
   legend(
-    x = "bottomleft", legend = rownames(Radar_functional_role_RSN_delta), horiz = TRUE,
+    x = "bottomleft", title = "* indicates there were no Global Bridge hubs in VMM for women",
+    legend = rownames(Radar_functional_role_RSN_delta), horiz = TRUE,
     bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
     text.col = "black", cex = 1, pt.cex = 2
   )
 }
 
-delta_hubness_profile("M", "F", 3, -1, 0.2)
+delta_hubness_profile("M", "F", 0.2)
