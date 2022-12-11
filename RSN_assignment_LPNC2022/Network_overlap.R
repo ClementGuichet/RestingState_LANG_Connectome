@@ -11,7 +11,7 @@ library(data.table)
 library(janitor)
 
 rm(list=ls())
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
 #Read file from JSON
 overlap <- as.data.frame(fromJSON('Overlap.json')) #JSON for the liberal CAB-NP
 overlap_tight <- as.data.frame(fromJSON('Overlap_tight.json')) #JSON for the tight CAB-NP
