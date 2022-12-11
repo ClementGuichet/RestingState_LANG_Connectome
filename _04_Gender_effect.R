@@ -623,7 +623,7 @@ delta_hubness_profile <- function(cluster1, cluster2, alpha) {
     summarize_at(vars(Connector:Satellite), sum) %>% 
     pivot_longer(cols = !c("1st_network", "Gender"), names_to = "Hub_consensus_gender", values_to = "freq") %>%
     # Compute the difference in proportion of a given functional role within each RSN
-    arrange(Gender) %>% 
+    arrange(Gender) %>%
     group_by(`1st_network`, Hub_consensus_gender) %>%
     mutate(delta_freq = freq / lag(freq)) 
     dplyr::select(-Gender) %>%
@@ -643,20 +643,21 @@ delta_hubness_profile <- function(cluster1, cluster2, alpha) {
     # Compute the difference in proportion of a given functional role within each RSN
     arrange(Gender) %>%
     group_by(`1st_network`, Bridgeness) %>%
-    mutate(delta_freq = freq / lag(freq)) %>% 
+    mutate(delta_freq = freq / lag(freq))
     dplyr::select(-Gender) %>%
     na.omit()
 
   Radar_functional_role_RSN_delta <-
     delta_proportion_a %>%
-    dplyr::select(`1st_network`, Hub_consensus_gender, delta_freq) %>% 
+    dplyr::select(`1st_network`, Hub_consensus_gender, delta_freq) %>%
+    spread(`1st_network`, delta_freq) %>%
+    # mutate_all(., ~ replace(., is.na(.), 0)) %>%
     subset(Hub_consensus_gender != "None") %>%
     mutate(`1st_network` = ifelse(delta_freq == "Inf"|delta_freq == 0, paste0(`1st_network`, "*"), `1st_network`)) %>% 
     mutate(delta_freq = ifelse(delta_freq == "Inf", 1, delta_freq)) %>%
     spread(`1st_network`, delta_freq) %>%
     remove_rownames() %>%
     column_to_rownames(var = "Hub_consensus_gender")
-
 
   radarplotting_overlap(Radar_functional_role_RSN_delta, 3, -1, 1, 1,
     alpha = alpha, label_size = 1,
@@ -674,6 +675,8 @@ delta_hubness_profile <- function(cluster1, cluster2, alpha) {
   Radar_functional_role_RSN_delta <-
     delta_proportion_b %>%
     dplyr::select(`1st_network`, Bridgeness, delta_freq) %>%
+    spread(`1st_network`, delta_freq) %>%
+    # mutate_all(., ~ replace(., is.na(.), 0)) %>%
     subset(Bridgeness != "None") %>%
     mutate(`1st_network` = ifelse(delta_freq == "Inf"|delta_freq == 0, paste0(`1st_network`, "*"), `1st_network`)) %>% 
     mutate(delta_freq = ifelse(delta_freq == "Inf", 1, delta_freq)) %>%
