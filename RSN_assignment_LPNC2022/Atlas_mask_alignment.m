@@ -29,7 +29,7 @@ global atlas
 atlas = [B,A];
 
 % defining the standard name of the masks
-path = "D:\Analyses\_Power264_to_CABNP\1_Isolate_Power_regions";
+path = "path\to\nii ROIs";
 files = dir(strcat(path, '\*.nii')); % getting all masks
 fileNames = {files.name};
 
