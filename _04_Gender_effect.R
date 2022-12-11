@@ -625,7 +625,7 @@ delta_hubness_profile <- function(cluster1, cluster2, alpha) {
     # Compute the difference in proportion of a given functional role within each RSN
     arrange(Gender) %>%
     group_by(`1st_network`, Hub_consensus_gender) %>%
-    mutate(delta_freq = freq / lag(freq)) 
+    mutate(delta_freq = freq / lag(freq)) %>% 
     dplyr::select(-Gender) %>%
     na.omit()
 
@@ -643,16 +643,14 @@ delta_hubness_profile <- function(cluster1, cluster2, alpha) {
     # Compute the difference in proportion of a given functional role within each RSN
     arrange(Gender) %>%
     group_by(`1st_network`, Bridgeness) %>%
-    mutate(delta_freq = freq / lag(freq))
+    mutate(delta_freq = freq / lag(freq)) %>% 
     dplyr::select(-Gender) %>%
     na.omit()
 
   Radar_functional_role_RSN_delta <-
     delta_proportion_a %>%
     dplyr::select(`1st_network`, Hub_consensus_gender, delta_freq) %>%
-    spread(`1st_network`, delta_freq) %>%
-    # mutate_all(., ~ replace(., is.na(.), 0)) %>%
-    subset(Hub_consensus_gender != "None") %>%
+    subset(Hub_consensus_gender != "None") %>% 
     mutate(`1st_network` = ifelse(delta_freq == "Inf"|delta_freq == 0, paste0(`1st_network`, "*"), `1st_network`)) %>% 
     mutate(delta_freq = ifelse(delta_freq == "Inf", 1, delta_freq)) %>%
     spread(`1st_network`, delta_freq) %>%
@@ -675,11 +673,9 @@ delta_hubness_profile <- function(cluster1, cluster2, alpha) {
   Radar_functional_role_RSN_delta <-
     delta_proportion_b %>%
     dplyr::select(`1st_network`, Bridgeness, delta_freq) %>%
-    spread(`1st_network`, delta_freq) %>%
-    # mutate_all(., ~ replace(., is.na(.), 0)) %>%
-    subset(Bridgeness != "None") %>%
-    mutate(`1st_network` = ifelse(delta_freq == "Inf"|delta_freq == 0, paste0(`1st_network`, "*"), `1st_network`)) %>% 
-    mutate(delta_freq = ifelse(delta_freq == "Inf", 1, delta_freq)) %>%
+    subset(Bridgeness != "None") %>% 
+    mutate(`1st_network` = ifelse(delta_freq == "Inf"|delta_freq == 0, paste0(`1st_network`, "*"), `1st_network`)) %>%
+    mutate(delta_freq = ifelse(delta_freq == "Inf", 1, delta_freq)) %>% 
     spread(`1st_network`, delta_freq) %>%
     remove_rownames() %>%
     column_to_rownames(var = "Bridgeness")
@@ -699,3 +695,57 @@ delta_hubness_profile <- function(cluster1, cluster2, alpha) {
 }
 
 delta_hubness_profile("M", "F", 0.2)
+
+
+################################################################################
+# Box plot ---------------------------------------------------------------------
+################################################################################
+# For each RSN, is there a difference in proportion of each functional role between genders?
+
+Gender_RSN_prop_1 <- data_gender_final %>%
+  group_by(`1st_network`, Subj_ID, Gender, Hub_consensus_gender) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>% 
+  # Make sure comparisons with missing functional roles can be achieved
+  spread(Hub_consensus_gender, freq) %>%
+  dplyr::select(-n) %>%
+  mutate_all(., ~ replace(., is.na(.), 0)) %>% 
+  group_by(`1st_network`, Subj_ID, Gender) %>%
+  summarize_at(vars(Connector:Satellite), sum) %>% 
+  pivot_longer(cols = !c("1st_network", "Subj_ID","Gender"), names_to = "Hub_consensus_gender", values_to = "freq") 
+
+Gender_RSN_prop_2 <- data_gender_final %>%
+  group_by(`1st_network`, Subj_ID, Gender, Bridgeness) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>%
+  # Make sure comparisons with missing functional roles can be achieved
+  spread(Bridgeness, freq) %>%
+  dplyr::select(-n) %>%
+  mutate_all(., ~ replace(., is.na(.), 0)) %>%
+  group_by(`1st_network`, Subj_ID, Gender) %>%
+  summarize_at(vars(Global_Bridge, Local_Bridge, Super_Bridge), sum) %>%
+  pivot_longer(cols = !c("1st_network", "Subj_ID","Gender"), names_to = "Bridgeness", values_to = "freq")
+
+Gender_RSN_prop_final <- bind_rows(Gender_RSN_prop_1, Gender_RSN_prop_2) %>% 
+  mutate(Functional_role = ifelse(is.na(Hub_consensus_gender) == TRUE, Bridgeness, Hub_consensus_gender)) %>% subset(Functional_role != "None") %>% 
+  # Based on the ratio observed with the radar plot
+  filter(grepl("Auditory|Language|FPN|DMN|PMM", `1st_network`))
+
+data_box_sig <- Gender_RSN_prop_final %>%
+  group_by(`1st_network`, Functional_role) %>%
+  rstatix::t_test(freq ~ Gender) %>% 
+  adjust_pvalue(method = "fdr") %>%
+  add_significance("p.adj") %>%
+  add_xy_position(x = "1st_network")
+
+ggplot(Gender_RSN_prop_final, aes(x = `1st_network`, y = freq)) +
+  geom_boxplot(aes(fill = Gender)) +
+  scale_fill_brewer(palette = "Dark2") +
+  facet_wrap(~Functional_role) +
+  theme_pubr() +
+  stat_pvalue_manual(data_box_sig,
+                     label = "p.adj.signif",
+                     tip.length = 0.01,
+                     hide.ns = TRUE
+  ) 
+
