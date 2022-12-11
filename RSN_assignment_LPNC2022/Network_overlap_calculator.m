@@ -13,7 +13,7 @@ name={S.name};
 
 for i = 1:size(name,2)
 %add here the name of folder
-pref = 'D:\Analyses\_Power264_to_CABNP\3_Multiplied\';
+pref = 'path\to\multiplied_nii';
 
 P=strcat(pref,name{1,i},',1');
 
