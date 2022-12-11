@@ -623,7 +623,11 @@ delta_hubness_profile <- function(cluster1, cluster2, alpha) {
     summarize_at(vars(Connector:Satellite), sum) %>% 
     pivot_longer(cols = !c("1st_network", "Gender"), names_to = "Hub_consensus_gender", values_to = "freq") %>%
     # Compute the difference in proportion of a given functional role within each RSN
+<<<<<<< HEAD
     arrange(Gender) %>% 
+=======
+    arrange(Gender) %>%
+>>>>>>> 81460f0e160007f36784da9dbdba95e2ccbea91a
     group_by(`1st_network`, Hub_consensus_gender) %>%
     mutate(delta_freq = freq / lag(freq)) 
     dplyr::select(-Gender) %>%
@@ -643,13 +647,24 @@ delta_hubness_profile <- function(cluster1, cluster2, alpha) {
     # Compute the difference in proportion of a given functional role within each RSN
     arrange(Gender) %>%
     group_by(`1st_network`, Bridgeness) %>%
+<<<<<<< HEAD
     mutate(delta_freq = freq / lag(freq)) %>% 
+=======
+    mutate(delta_freq = freq / lag(freq))
+    filter(delta_freq != "Inf") %>% 
+>>>>>>> 81460f0e160007f36784da9dbdba95e2ccbea91a
     dplyr::select(-Gender) %>%
     na.omit()
 
   Radar_functional_role_RSN_delta <-
     delta_proportion_a %>%
+<<<<<<< HEAD
     dplyr::select(`1st_network`, Hub_consensus_gender, delta_freq) %>% 
+=======
+    dplyr::select(`1st_network`, Hub_consensus_gender, delta_freq) %>%
+    spread(`1st_network`, delta_freq) %>%
+    # mutate_all(., ~ replace(., is.na(.), 0)) %>%
+>>>>>>> 81460f0e160007f36784da9dbdba95e2ccbea91a
     subset(Hub_consensus_gender != "None") %>%
     mutate(`1st_network` = ifelse(delta_freq == "Inf"|delta_freq == 0, paste0(`1st_network`, "*"), `1st_network`)) %>% 
     mutate(delta_freq = ifelse(delta_freq == "Inf", 1, delta_freq)) %>%
@@ -658,7 +673,11 @@ delta_hubness_profile <- function(cluster1, cluster2, alpha) {
     column_to_rownames(var = "Hub_consensus_gender")
 
 
+<<<<<<< HEAD
   radarplotting_overlap(Radar_functional_role_RSN_delta, 3, -1, 1, 1,
+=======
+  radarplotting_overlap(Radar_functional_role_RSN_delta, 4, 0, 1, 1,
+>>>>>>> 81460f0e160007f36784da9dbdba95e2ccbea91a
     alpha = alpha, label_size = 1,
     title_fill = "Ratio of the proportion of functional roles between genders. A positive ratio favors men",
     palette = RColorBrewer::brewer.pal(8, "Dark2")
@@ -674,6 +693,11 @@ delta_hubness_profile <- function(cluster1, cluster2, alpha) {
   Radar_functional_role_RSN_delta <-
     delta_proportion_b %>%
     dplyr::select(`1st_network`, Bridgeness, delta_freq) %>%
+<<<<<<< HEAD
+=======
+    spread(`1st_network`, delta_freq) %>%
+    # mutate_all(., ~ replace(., is.na(.), 0)) %>%
+>>>>>>> 81460f0e160007f36784da9dbdba95e2ccbea91a
     subset(Bridgeness != "None") %>%
     mutate(`1st_network` = ifelse(delta_freq == "Inf"|delta_freq == 0, paste0(`1st_network`, "*"), `1st_network`)) %>% 
     mutate(delta_freq = ifelse(delta_freq == "Inf", 1, delta_freq)) %>%
