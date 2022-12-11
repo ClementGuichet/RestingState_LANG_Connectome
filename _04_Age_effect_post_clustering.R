@@ -366,4 +366,4 @@ delta_hubness_profile <- function(cluster1, cluster2, max, min, max2, min2, alph
   )
 }
 
-delta_hubness_profile("23", "68", 9, -3, 4, -2, 0.1)
+delta_hubness_profile("35", "68", 9, -3, 4, -2, 0.1)
