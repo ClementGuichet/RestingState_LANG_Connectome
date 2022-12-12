@@ -166,16 +166,8 @@ data_hub_selection_cluster <- filter(
   Subj_ID %in% tmp_cluster_1$Subj_ID
 )
 
-# Get the RSN labels for the regions yielded by hub detection procedure
-get_RSN_label <- data_functional_role %>%
-  filter(Region %in% data_hub_selection_cluster$Region) %>%
-  dplyr::select(`1st_network`, Region) %>%
-  distinct()
-
-tmp_cluster_2 <- merge(data_hub_selection_cluster, get_RSN_label, by = "Region")
-
 # Final dataframe with the subjects, their cluster assignment, their hub regions and the RSNs
-tmp_cluster_final <- merge(tmp_cluster_2, data_post_clustering %>%
+tmp_cluster_final <- merge(data_hub_selection_cluster, data_post_clustering %>%
                              dplyr::select(Subj_ID, cluster),
                            by = "Subj_ID"
 )
@@ -189,7 +181,7 @@ Radar_hub_RSN <- tmp_cluster_final %>%
   remove_rownames() %>% column_to_rownames("cluster") %>% 
   mutate_at(vars(everything()), funs(. * 100))
 
-radarplotting_overlap(Radar_hub_RSN, 25, 0, 1, 1,
+radarplotting_overlap(Radar_hub_RSN, 30, 0, 1, 1,
                       alpha = 0.05, label_size = 1,
                       title_fill = "Distribution of hubs regions across RSNs",
                       palette = RColorBrewer::brewer.pal(8, "Dark2")
@@ -201,6 +193,39 @@ legend(
   bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
   text.col = "black", cex = 1, pt.cex = 2
 )
+
+
+# What are the hubs that are most consistently assigned the same functional role across subjects? ----
+
+# Radar plot of top % hub regions consistently labeled as a specific hub type across subjects
+# This means that the funcitonal labeling is the most consistent for that hub across subjects
+
+plot_functional_role_Region <- data_hub_selection_per_subject %>%
+  group_by(Region, Hub_consensus) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>%
+  arrange(Region, desc(freq))
+
+# Select only the top n regions to be displayed
+top <- 5
+
+Radar_functional_role_Region <- plot_functional_role_Region %>%
+  dplyr::select(Hub_consensus, freq) %>%
+  ungroup() %>%
+  group_by(Hub_consensus, .add = TRUE) %>%
+  group_split() %>%
+  map_dfr(. %>% slice_max(freq, n = top)) %>%
+  spread(Region, freq) %>%
+  subset(Hub_consensus != "None") %>%
+  remove_rownames() %>%
+  column_to_rownames(var = "Hub_consensus") %>%
+  mutate_at(vars(everything()), funs(. * 100))
+
+radarplotting(Radar_functional_role_Region, 100, 20, 2, 2,
+              alpha = 0.3, label_size = 1,
+              palette = RColorBrewer::brewer.pal(8, "Dark2")
+)
+
 
 
 # Difference in the hubness profile --------------------------------------------
@@ -225,21 +250,12 @@ delta_hubness_profile <- function(cluster1, cluster2, max, min, max2, min2, alph
   # Hub region specific to each subject yielded by hub detection procedure
   data_hub_selection_per_subject <- rbindlist(Hub_selection)
   # Select the subjects from the clusters
-  # This df has the right number of subjects and regions, need to add the RSN networks
   data_hub_selection_cluster <- filter(
     data_hub_selection_per_subject,
     Subj_ID %in% tmp_cluster_1$Subj_ID
   )
-  
-  get_RSN_label <- data_functional_role %>%
-    filter(Region %in% data_hub_selection_cluster$Region) %>%
-    dplyr::select(`1st_network`, Region) %>%
-    distinct()
-  
-  tmp_cluster_2 <- merge(data_hub_selection_cluster, get_RSN_label, by = "Region")
-  
   # Final dataframe with only the subjects of chosen clusters, their hub regions and the RSNs -----
-  tmp_cluster_final <- merge(tmp_cluster_2, tmp_cluster_0 %>%
+  tmp_cluster_final <- merge(data_hub_selection_cluster, tmp_cluster_0 %>%
                                dplyr::select(Subj_ID, cluster),
                              by = "Subj_ID"
   ) 

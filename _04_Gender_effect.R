@@ -513,7 +513,7 @@ for (i in 1:length(Top_metric_Gender_ind)) {
   tmp <- data_gender_1_helper_vector %>%
     filter(Region %in% Hub_df$Region) %>%
     filter(helper_vector == i) %>%
-    dplyr::select(helper_vector, Region, Hub_consensus_gender, Bridgeness)
+    dplyr::select(helper_vector, Region, `1st_network`, Hub_consensus_gender, Bridgeness)
   Hub_selection_gender[[i]] <- tmp
 
   FR_ind_hub <- tmp %>%
@@ -578,14 +578,8 @@ delta_hubness_profile <- function(cluster1, cluster2, alpha) {
   # Hub region specific to each subject yielded by hub detection procedure
   data_hub_selection_per_subject_gender <- rbindlist(Hub_selection_gender)
 
-  # Get the associated Resting-state networks
-  get_RSN_label <- data_functional_role %>%
-    filter(Region %in% data_hub_selection_per_subject_gender$Region) %>%
-    dplyr::select(`1st_network`, Region) %>%
-    distinct()
-
-  data_gender_final <- merge(data_hub_selection_per_subject_gender, get_RSN_label, by = "Region") %>%
-    merge(., data_gender_1_helper_vector %>% dplyr::select(helper_vector, Subj_ID, Gender, Region),
+  data_gender_final <- merge(data_hub_selection_per_subject_gender, data_gender_1_helper_vector %>% 
+                               dplyr::select(helper_vector, Subj_ID, Gender, Region),
       by = c("helper_vector", "Region")
     )
   

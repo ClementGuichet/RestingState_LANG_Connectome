@@ -105,7 +105,7 @@ for (i in 1:length(Top_metric_Age_ind)) {
   tmp <- data_functional_role %>%
     filter(Region %in% Hub_df$Region) %>%
     filter(Subj_ID == i) %>%
-    dplyr::select(Subj_ID, Region, Hub_consensus, Bridgeness)
+    dplyr::select(Subj_ID, Region, `1st_network`, Hub_consensus, Bridgeness)
   Hub_selection[[i]] <- tmp
 
   # Here I compute the proportion of functional roles regarding centrality and information flow
@@ -126,6 +126,14 @@ for (i in 1:length(Top_metric_Age_ind)) {
   FR_ind <- cbind(FR_ind_hub, FR_ind_bridge)
   FR_list[[i]] <- FR_ind
 }
+
+
+# What are the most common hubs across subjects?
+most_common_hubs <- rbindlist(Hub_selection) %>% count(Region, `1st_network`) %>% 
+  mutate(n = n/72) %>% arrange(desc(n)) %>% filter(n > 0.8) %>% mutate_at(vars(n), funs(. * 100))
+
+###############################################################################
+# Getting ready for hierarchical clustering analysis
 
 # Adding a ratio score denoting propensity for segregation over integration
 data_cluster_efficiency <- data_functional_role %>%
@@ -157,8 +165,6 @@ data_hubness_profile_Age_ind %>%
   ggpubr::theme_pubr() +
   ggtitle("Evolution of functional roles across adult lifespan")
 
-###############################################################################
-# Getting ready for hierarchical clustering analysis
 data_cluster <- data_hubness_profile_Age_ind %>%
   filter(Age != "NaN") %>%
   dplyr::select(-c(Subj_ID, Age))
