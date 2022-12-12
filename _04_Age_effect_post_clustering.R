@@ -188,7 +188,7 @@ radarplotting_overlap(Radar_hub_RSN, 30, 0, 1, 1,
 )
 
 legend(
-  x = "bottomleft", title = "Median age of each cluster\n Based on Ward Hierarchichal clustering (FWER corrected)\n (Kimes et al., 2017)",
+  x = "topright", title = "Median age of each cluster\n Based on Ward Hierarchichal clustering (FWER corrected)\n (Kimes et al., 2017)",
   legend = rownames(Radar_hub_RSN), horiz = TRUE,
   bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
   text.col = "black", cex = 1, pt.cex = 2
@@ -219,6 +219,32 @@ Radar_functional_role_Region <- plot_functional_role_Region %>%
   subset(Hub_consensus != "None") %>%
   remove_rownames() %>%
   column_to_rownames(var = "Hub_consensus") %>%
+  mutate_at(vars(everything()), funs(. * 100))
+
+radarplotting(Radar_functional_role_Region, 100, 20, 2, 2,
+              alpha = 0.3, label_size = 1,
+              palette = RColorBrewer::brewer.pal(8, "Dark2")
+)
+
+plot_functional_role_Region <- data_hub_selection_per_subject %>%
+  group_by(Region, Bridgeness) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>%
+  arrange(Region, desc(freq))
+
+# Select only the top n regions to be displayed
+top <- 5
+
+Radar_functional_role_Region <- plot_functional_role_Region %>%
+  dplyr::select(Bridgeness, freq) %>%
+  ungroup() %>%
+  group_by(Bridgeness, .add = TRUE) %>%
+  group_split() %>%
+  map_dfr(. %>% slice_max(freq, n = top)) %>%
+  spread(Region, freq) %>%
+  subset(Bridgeness != "None") %>%
+  remove_rownames() %>%
+  column_to_rownames(var = "Bridgeness") %>%
   mutate_at(vars(everything()), funs(. * 100))
 
 radarplotting(Radar_functional_role_Region, 100, 20, 2, 2,
@@ -384,4 +410,4 @@ delta_hubness_profile <- function(cluster1, cluster2, max, min, max2, min2, alph
   )
 }
 
-delta_hubness_profile("35", "68", 9, -3, 4, -2, 0.1)
+delta_hubness_profile("23", "68", 9, -3, 4, -2, 0.1)

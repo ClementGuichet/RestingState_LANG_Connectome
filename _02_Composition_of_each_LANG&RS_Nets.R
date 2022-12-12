@@ -9,7 +9,6 @@ library(ggpubr)
 library(ggalluvial)
 
 rm(list = ls())
-options(max.print = 99999)
 
 ##########################################################################################
 # Import processed data------------------------------------------------------------------
@@ -158,7 +157,7 @@ Radar_RSN_LANG_Nets <- Net_proportion_InLang %>%
 
 radarplotting_overlap(Radar_RSN_LANG_Nets, 100, 0, 1, 1,
   alpha = 0.4, label_size = 1,
-  title = "Composition of each LANG Net",
+  title = "Composition of each LANG Net (InLang)",
   palette = c("#00AFBB", "#E7B800", "#FC4E07", "#FF99FF")
 )
 legend(
@@ -166,6 +165,26 @@ legend(
   bty = "n", pch = 20, col = c("#00AFBB", "#E7B800", "#FC4E07", "#FF99FF"),
   text.col = "black", cex = 1, pt.cex = 2
 )
+
+Radar_RSN_LANG_Nets <- Net_proportion_ImCalc_weighted %>%
+  dplyr::select(LANG_Net_assign, `1st_network`, adjusted_freq) %>%
+  spread(`1st_network`, adjusted_freq) %>%
+  remove_rownames() %>%
+  column_to_rownames(var = "LANG_Net_assign") %>%
+  mutate_at(vars(everything()), funs(. * 100))
+
+
+radarplotting_overlap(Radar_RSN_LANG_Nets, 100, 0, 1, 1,
+                      alpha = 0.4, label_size = 1,
+                      title = "Composition of each LANG Net (Network_overlap_calc)",
+                      palette = c("#00AFBB", "#E7B800", "#FC4E07", "#FF99FF")
+)
+legend(
+  x = "bottomleft", legend = rownames(Radar_RSN_LANG_Nets), horiz = TRUE,
+  bty = "n", pch = 20, col = c("#00AFBB", "#E7B800", "#FC4E07", "#FF99FF"),
+  text.col = "black", cex = 1, pt.cex = 2
+)
+
 
 ###############################################################################
 # With the resting-state community structure
@@ -285,3 +304,4 @@ legend(
   bty = "n", pch = 20, col = c("#00AFBB", "#E7B800", "#FC4E07", "#FF99FF"),
   text.col = "black", cex = 1, pt.cex = 2
 )
+

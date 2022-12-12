@@ -4,15 +4,10 @@
 # Written by CG
 # 26-11-2022
 ##########################################################################################
-library(ComplexHeatmap)
 library(data.table)
 library(RColorBrewer)
 library(rstatix)
 library(Rmisc)
-library(rgl)
-library(FactoMineR)
-library(factoextra)
-library(FactoInvestigate)
 library(fitdistrplus)
 
 
@@ -29,7 +24,7 @@ source("_radarplotting_function.R")
 # Inferential statistics
 
 data_stat_age <- data_functional_role %>%
-  group_by(Subj_ID, CAB_NP_assign, Region, Age) %>%
+  group_by(Subj_ID, CAB_NP_assign, Region, Age, Consensus_vector_0.15, LANG_Net_assign) %>%
   summarize_at(vars(degree), mean) %>%
   filter(Age != "NaN") %>%
   mutate(DC = degree / max(.$degree))
@@ -47,12 +42,12 @@ gghistogram(data_stat_age,
 fitdistrplus::descdist(data_stat_age$DC)
 
 correlation_DC_age <- data_stat_age %>%
-  group_by(CAB_NP_assign, Region) %>%
+  group_by(CAB_NP_assign, Region, Consensus_vector_0.15, LANG_Net_assign) %>%
   group_split() %>%
   map_dfr(. %>%
     mutate(Estimate = cor.test(.$DC, .$Age, method = "kendall")$estimate) %>%
     mutate(p_value = cor.test(.$DC, .$Age, method = "kendall")$p.value)) %>%
-  group_by(CAB_NP_assign, Region) %>%
+  group_by(CAB_NP_assign, Region, Consensus_vector_0.15, LANG_Net_assign) %>%
   summarise_at(vars(Estimate, p_value), mean)
 
 ggdotchart(
@@ -65,7 +60,7 @@ ggdotchart(
   rotate = TRUE, legend = "none", title = "Significant correlations between degree centrality and Age"
 )
 
-
+correlation_DC_age %>% subset(p_value <= 0.05) %>% mutate(val = ifelse(Estimate > 0, "Positive", "Negative")) %>% arrange(val)
 ################################################################################
 ################################################################################
 # ~~~~~~~~~~~ Hub Detection Procedure ~~~~~~~~~~~

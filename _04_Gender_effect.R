@@ -20,11 +20,35 @@ source("_03_Hub_classification.R")
 source("_radarplotting_function.R")
 source("_NMI&AMI_functions.R")
 
+# Helpers
+# Define normalizing function
+min_max_norm <- function(x) {
+  (x - min(x)) / (max(x) - min(x))
+}
+
+# Define palette for visualization
+custom_palette <- c(
+  "Auditory" = "#FF99FF",
+  "Language" = "#FF6600",
+  "CON" = "#9900CC",
+  "DMN" = "#FF0033",
+  "FPN" = "#FFCC33",
+  "SMN" = "#0099CC",
+  "DAN" = "#33FF66",
+  "Visual_1" = "#CCCCCC",
+  "Visual_2" = "#CCCCCC",
+  "PMM" = "#CC0033",
+  "VMM" = "#CC0033",
+  "NaN" = "white",
+  "Multi" = "white",
+  "Multi/SM" = "white"
+)
+
 # ~~~~~~~~~~~ Gender effect ~~~~~~~~~~~
 by(data_full_per_subject %>% subset(threshold == "0.15"), factor((data_full_per_subject %>% subset(threshold == "0.15"))$Gender), summary)
 
 data_stat_gender <- data_functional_role %>% 
-  group_by(Subj_ID, CAB_NP_assign, Region, Gender) %>%
+  group_by(Subj_ID, CAB_NP_assign, Region, Gender, Consensus_vector_0.15, LANG_Net_assign) %>%
   summarize_at(vars(degree), mean) %>%
   filter(Gender != "NaN") %>%
   mutate(DC = degree / 59) %>%
@@ -48,7 +72,7 @@ Rmisc::multiplot(M, F)
 # Brunner-Munzel test for heteroskedastic-robustness
 
 t_test_gender <- data_stat_gender %>%
-  group_by(CAB_NP_assign, Region) %>%
+  group_by(CAB_NP_assign, Region, Consensus_vector_0.15, LANG_Net_assign) %>%
   group_split() %>% # split per region and perform a t_test
   map_dfr(. %>%
     mutate(statistic = wilcox.test(DC ~ Gender, alternative = "two.sided", paired = FALSE, exact = FALSE, digits.rank = 7)$statistic) %>%
@@ -58,7 +82,7 @@ t_test_gender <- data_stat_gender %>%
     mutate(statistic_BM = brunnermunzel.test(DC ~ Gender, alternative = "two.sided")$statistic) %>%
     mutate(p_value_BM = brunnermunzel.test(DC ~ Gender, alternative = "two.sided")$p.value) %>%
     mutate(Estimate_BM = brunnermunzel.test(DC ~ Gender, alternative = "two.sided")$estimate)) %>%
-  group_by(CAB_NP_assign, Region) %>%
+  group_by(CAB_NP_assign, Region, Consensus_vector_0.15, LANG_Net_assign) %>%
   summarize_at(vars(statistic, p_value, Mean_male, Mean_female, statistic_BM, p_value_BM, Estimate_BM), mean)
 # mutate(p_adjusted = p.adjust(p_value, method = "fdr"))
 
@@ -72,11 +96,13 @@ ggdotchart(
   rotate = TRUE, legend = "none"
 )
 
+t_test_gender %>% subset(p_value <= 0.05) %>% mutate(val = ifelse(statistic_BM > 0, "Positive", "Negative")) %>% arrange(val)
+
 ################################################################################
 # Modular composition between Men & Women --------------------------------------
 ################################################################################
 
-data_RS <- data_per_region_combined_bu %>% subset(threshold == "0.15")
+data_RS <- data_full_per_region %>% subset(threshold == "0.15")
 
 # NMI & AMI
 NMI_func(factor(data_RS$Consensus_vector_male), factor(data_RS$Consensus_vector_female))
@@ -658,7 +684,7 @@ delta_hubness_profile <- function(cluster1, cluster2, alpha) {
   )
 
   legend(
-    x = "bottomleft", title = "\n * indicates there were no Provincial hubs in Visual 2 for men",
+    x = "topright", title = "\n * indicates there were no Provincial hubs in Visual 2 for men",
     legend = rownames(Radar_functional_role_RSN_delta), horiz = TRUE,
     bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
     text.col = "black", cex = 1, pt.cex = 2
@@ -681,7 +707,7 @@ delta_hubness_profile <- function(cluster1, cluster2, alpha) {
   )
 
   legend(
-    x = "bottomleft", title = "* indicates there were no Global Bridge hubs in VMM for women",
+    x = "topright", title = "* indicates there were no Global Bridge hubs in VMM for women",
     legend = rownames(Radar_functional_role_RSN_delta), horiz = TRUE,
     bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
     text.col = "black", cex = 1, pt.cex = 2
