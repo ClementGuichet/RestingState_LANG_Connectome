@@ -4,7 +4,6 @@
 # Written by CG
 # 26-11-2022
 ##########################################################################################
-library(ComplexHeatmap)
 library(data.table)
 library(RColorBrewer)
 library(rstatix)
@@ -14,6 +13,7 @@ library(FactoMineR)
 library(factoextra)
 library(FactoInvestigate)
 library(fitdistrplus)
+library(sigclust2)
 
 
 rm(list = ls())
@@ -28,57 +28,65 @@ data_post_clustering %>%
   group_by(cluster) %>%
   get_summary_stats(Age, type = "full")
 
-# Young and old are more similar and stable than middle age
+data_post_clustering %>%
+  group_by(cluster) %>% count(Gender) %>% mutate(n = prop.table(n))
 
-gghistogram(data_post_clustering %>% subset(cluster == "1"),
+# # Groups:   cluster [3]
+# cluster Gender     n
+# <int> <chr>  <dbl>
+# 1 25      F      0.583 
+# 2 25      M      0.417 
+# 3 25_bis  F      0.571 
+# 4 25_bis  M      0.4   
+# 5 25_bis  NaN    0.0286
+# 6 50      F      0.36  
+# 7 50      M      0.6   
+# 8 50      NaN    0.04 
+
+
+a <- gghistogram(data_post_clustering %>% subset(cluster == "1"),
             x = "Age", y = "..density..",
             fill = "purple", add_density = TRUE
 ) + theme_pubclean()
-gghistogram(data_post_clustering %>% subset(cluster == "2"),
+b <- gghistogram(data_post_clustering %>% subset(cluster == "2"),
             x = "Age", y = "..density..",
             fill = "purple", add_density = TRUE
 ) + theme_pubclean()
-gghistogram(data_post_clustering %>% subset(cluster == "3"),
-            x = "Age", y = "..density..",
-            fill = "purple", add_density = TRUE
-) + theme_pubclean()
-gghistogram(data_post_clustering %>% subset(cluster == "4"),
+c <- gghistogram(data_post_clustering %>% subset(cluster == "3"),
             x = "Age", y = "..density..",
             fill = "purple", add_density = TRUE
 ) + theme_pubclean()
 
-ComplexHeatmap::Heatmap(scale(data_cluster), split = data_post_clustering$cluster)
+Rmisc::multiplot(a, b, c)
 
 data_post_clustering <- data_post_clustering %>%
-  mutate(cluster = ifelse(cluster == "1", "23",
-                          ifelse(cluster == "2", "25",
-                                 ifelse(cluster == "3", "35",
-                                        ifelse(cluster == "4", "68", 0)
-                                 )
+  mutate(cluster = ifelse(cluster == "1", "25",
+                          ifelse(cluster == "2", "50",
+                                 ifelse(cluster == "3", "25_bis", 0)
                           )
   ))
 
 ################################################################################
 # PCA --------------------------------------------------------------------------
-pc <- PCA(data_post_clustering %>% dplyr::select(-c(Subj_ID, Age, cluster)), axes = c(1, 2))
-
-data_post_clustering$cluster <- factor(data_post_clustering$cluster)
-fviz_pca_ind(pc,
-             geom.ind = "point", pointshape = 21,
-             axes = c(1, 2),
-             pointsize = 2,
-             fill.ind = data_post_clustering$cluster,
-             col.ind = "black",
-             palette = "jco",
-             addEllipses = TRUE,
-             label = "var",
-             col.var = "black",
-             repel = TRUE,
-             legend.title = "Median age"
-) +
-  ggtitle("2D PCA-plot of functional roles") +
-  theme(plot.title = element_text(hjust = 0.5))
-
+# pc <- PCA(data_post_clustering %>% dplyr::select(-c(Subj_ID, Age, Gender, cluster)), axes = c(1, 2))
+# pc$var
+# data_post_clustering$cluster <- factor(data_post_clustering$cluster)
+# fviz_pca_ind(pc,
+#              geom.ind = "point", pointshape = 21,
+#              axes = c(1, 2),
+#              pointsize = 2,
+#              fill.ind = data_post_clustering$cluster,
+#              col.ind = "black",
+#              palette = "jco",
+#              addEllipses = TRUE,
+#              label = "var",
+#              col.var = "black",
+#              repel = TRUE,
+#              legend.title = "Median age"
+# ) +
+#   ggtitle("2D PCA-plot of functional roles") +
+#   theme(plot.title = element_text(hjust = 0.5))
+# 
 
 ################################################################################
 # Box plot ---------------------------------------------------------------------
@@ -92,7 +100,7 @@ data_post_clustering %>%
 
 data_box <- data_post_clustering %>%
   pivot_longer(
-    cols = !c("Subj_ID", "cluster", "Age"),
+    cols = !c("Subj_ID", "cluster", "Gender","Age"),
     names_to = "Metrics",
     values_to = "Metric_value"
   ) %>%
@@ -106,7 +114,7 @@ data_box$Metrics <- factor(data_box$Metrics, levels = c(
 
 data_box_sig <- data_box %>%
   group_by(Metrics) %>%
-  rstatix::t_test(Metric_value ~ Median_Age, ref.group = "68") %>%
+  rstatix::t_test(Metric_value ~ Median_Age) %>%
   adjust_pvalue(method = "fdr") %>%
   add_significance("p.adj") %>%
   add_xy_position(x = "Metrics")
@@ -143,7 +151,7 @@ radarplotting_overlap(Radar_functional_role_median_age, 60, 0, 1, 1,
 )
 
 legend(
-  x = "bottomleft", title = "Median age of each cluster\n Based on Ward Hierarchichal clustering (FWER corrected)\n (Kimes et al., 2017)",
+  x = "topright", title = "Median age of each cluster\n Based on Ward Hierarchichal clustering (FWER corrected)\n (Kimes et al., 2017)",
   legend = rownames(Radar_functional_role_median_age), horiz = TRUE,
   bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
   text.col = "black", cex = 1, pt.cex = 2
@@ -258,8 +266,8 @@ radarplotting(Radar_functional_role_Region, 100, 20, 2, 2,
 # Difference in the proportion of each functional role within each RSN for the two selected clusters
 delta_hubness_profile <- function(cluster1, cluster2, max, min, max2, min2, alpha) {
   # Pick clusters
-  a <- cluster1
-  b <- cluster2
+  a <- "25"
+  b <- "50"
   
   # Final dataframe with only the subjects of chosen clusters, their hub regions and the RSNs -----
   # 1a
@@ -362,16 +370,17 @@ delta_hubness_profile <- function(cluster1, cluster2, max, min, max2, min2, alph
     pivot_longer(cols = !c("1st_network", "cluster"), names_to = "Bridgeness", values_to = "freq") %>%
     # Compute the difference in proportion of a given functional role within each RSN
     group_by(`1st_network`, Bridgeness) %>%
-    mutate(delta_freq = freq / lag(freq)) %>%
+    mutate(delta_freq = freq / lag(freq)) %>% 
     dplyr::select(-cluster) %>%
     na.omit()
   
   Radar_functional_role_RSN_delta <-
     delta_proportion_a %>%
     dplyr::select(`1st_network`, Hub_consensus, delta_freq) %>%
-    spread(`1st_network`, delta_freq) %>%
-    mutate_all(., ~ replace(., is.na(.), 0)) %>%
     subset(Hub_consensus != "None") %>%
+    mutate(`1st_network` = ifelse(delta_freq == "Inf"|delta_freq == 0, paste0(`1st_network`, "*"), `1st_network`)) %>% 
+    mutate(delta_freq = ifelse(delta_freq == "Inf", 1, delta_freq)) %>%
+    spread(`1st_network`, delta_freq) %>%
     remove_rownames() %>%
     column_to_rownames(var = "Hub_consensus")
   
@@ -391,9 +400,10 @@ delta_hubness_profile <- function(cluster1, cluster2, max, min, max2, min2, alph
   Radar_functional_role_RSN_delta <-
     delta_proportion_b %>%
     dplyr::select(`1st_network`, Bridgeness, delta_freq) %>%
-    spread(`1st_network`, delta_freq) %>%
-    mutate_all(., ~ replace(., is.na(.), 0)) %>%
     subset(Bridgeness != "None") %>%
+    mutate(`1st_network` = ifelse(delta_freq == "Inf"|delta_freq == 0, paste0(`1st_network`, "*"), `1st_network`)) %>% 
+    mutate(delta_freq = ifelse(delta_freq == "Inf", 1, delta_freq)) %>%
+    spread(`1st_network`, delta_freq) %>%
     remove_rownames() %>%
     column_to_rownames(var = "Bridgeness")
   
@@ -410,4 +420,4 @@ delta_hubness_profile <- function(cluster1, cluster2, max, min, max2, min2, alph
   )
 }
 
-delta_hubness_profile("23", "68", 9, -3, 4, -2, 0.1)
+delta_hubness_profile("25", "50", 4, 0, 6, -2, 0.1)

@@ -9,6 +9,7 @@ library(RColorBrewer)
 library(rstatix)
 library(Rmisc)
 library(fitdistrplus)
+library(sigclust2)
 
 
 rm(list = ls())
@@ -143,13 +144,13 @@ data_cluster_efficiency <- data_functional_role %>%
 data_hubness_profile_Age_ind <- cbind(
   rbindlist(FR_list, fill = TRUE) %>% dplyr::select(-None) %>%
     mutate_all(., ~ replace(., is.na(.), 0)) %>% mutate_at(vars(everything()), funs(. * 100)),
-  data_functional_role %>% group_by(Subj_ID) %>% summarise_at(vars(Age), mean) %>% arrange(Subj_ID),
+  data_functional_role %>% group_by(Subj_ID, Gender) %>% summarise_at(vars(Age), mean) %>% arrange(Subj_ID),
   Balance_eff = data_cluster_efficiency$Balance_eff
 )
 
 data_hubness_profile_Age_ind %>%
   pivot_longer(
-    cols = !c("Subj_ID", "Age"),
+    cols = !c("Subj_ID", "Age", "Gender"),
     names_to = "Functional_role",
     values_to = "Score"
   ) %>%
@@ -160,28 +161,40 @@ data_hubness_profile_Age_ind %>%
   ggpubr::theme_pubr() +
   ggtitle("Evolution of functional roles across adult lifespan")
 
-data_cluster <- data_hubness_profile_Age_ind %>%
-  filter(Age != "NaN") %>%
-  dplyr::select(-c(Subj_ID, Age))
+data_pre_clustering <- data_hubness_profile_Age_ind %>%
+  dplyr::select(-c(Subj_ID, Age, Gender))
+
+
+################################################################################
+# PCA --------------------------------------------------------------------------
+# Keeping 5 components which explain 90% of variance
+pc <- PCA(data_pre_clustering, ncp = 5, scale.unit = T, axes = c(1, 2))
+pc$eig
+dimdesc(pc, axes = 1:5)
+
+data_cluster <- pc$ind$coord %>% as.data.frame()
+# Factoshiny::Factoshiny(pc)
 
 # Clustering -----------------
 performance::check_clusterstructure(data_cluster)
 corrplot::corrplot(cor(data_cluster))
+ComplexHeatmap::Heatmap(scale(data_pre_clustering))
+
 
 # Define linkage methods
-# link <- c("average", "single", "complete", "ward")
-# names(link) <- c("average", "single", "complete", "ward")
-# # Function to compute the agglomerative coefficient (i.e., the strength of the clusters)
-# ac <- function(x) {
-#   cluster::agnes(data_cluster, method = x)$ac
-# }
-# sapply(link, ac)
+link <- c("average", "single", "complete", "ward")
+names(link) <- c("average", "single", "complete", "ward")
+# Function to compute the agglomerative coefficient (i.e., the strength of the clusters)
+ac <- function(x) {
+  cluster::agnes(data_cluster, method = x)$ac
+}
+sapply(link, ac)
 
 # Defining optimal number of cluster with gap statistic
 gap_stat <- cluster::clusGap(data_cluster,
   FUN = hcut,
   K.max = 5,
-  B = 500,
+  B = 1000,
   verbose = T
 )
 
@@ -190,7 +203,7 @@ factoextra::fviz_gap_stat(gap_stat)
 plot_cluster <- cluster::agnes(data_cluster, method = "ward", metric = "euclidian")
 fviz_dend(plot_cluster,
   cex = 0.8,
-  k = 4,
+  k = 3,
   palette = "jco",
   rect = T,
   color_labels_by_k = TRUE,
@@ -212,7 +225,8 @@ plot(shc_result, hang = .1)
 # Compute distance matrix
 d <- dist(data_cluster, method = "euclidean")
 final_clust <- hclust(d, method = "ward.D2")
-groups <- cutree(final_clust, k = 4)
+groups <- cutree(final_clust, k = 3)
 
-data_post_clustering <- cbind(data_hubness_profile_Age_ind %>% filter(Age != "NaN"), cluster = groups)
+data_post_clustering <- cbind(data_hubness_profile_Age_ind, cluster = groups)
+
 
