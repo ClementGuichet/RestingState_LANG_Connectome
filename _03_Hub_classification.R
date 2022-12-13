@@ -1,38 +1,26 @@
 ##########################################################################################
-# Script for statistical analyses with the data processed from _DataManip_01_bin.R
+# Script for functional hub classification with the data processed
 
-# Original hubness score
+# Original definition of Bridgeness for topological-functional profiles
+
 # Written by CG
 # 26-11-2022
 ##########################################################################################
 library(tidyverse)
 library(janitor)
 library(plyr)
-library(readxl)
-library(lmerTest)
 library(car)
 library(Rmisc)
 library(tidylog)
-library(lme4)
-library(ggpubr)
-library(broom)
-library(purrr)
-library(effectsize)
 library(jsonlite) # for working with json files
 library(emmeans) # for post-hoc tests
-library(factoextra)
 library(data.table) # for working with lists
-library(FactoMineR) # for PCA
+
 
 rm(list = ls())
-options(max.print = 99999)
-
 ################################################################################
 # Import processed data---------------------------------------------------------
 source("_01_DataManip.R")
-# Import local functions
-source("_radarplotting_function.R")
-source("_NMI&AMI_functions.R")
 
 ################################################################################
 # ~~~~~~~~~~~ Hub classification ~~~~~~~~~~~ -----------------------------------
@@ -108,7 +96,8 @@ data_functional_role <- data_bind_PC_Wz %>%
 
 
 ################################################################################
-# # Method 2 - For PCA-weighted mean ---------------------------
+# Experimental thingy that didn't work out
+#  Method 2 - For PCA-weighted mean ---------------------------
 # cov <- data_hub_1_thresholded %>%
 #   group_by(Region) %>%
 #   summarize_at(vars(zK, Within_module_z, zPC, zBT, zFlow), mean) %>%
