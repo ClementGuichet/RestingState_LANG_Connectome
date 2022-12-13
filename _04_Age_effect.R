@@ -61,6 +61,8 @@ ggdotchart(
   rotate = TRUE, legend = "none", title = "Significant correlations between degree centrality and Age"
 )
 
+ComplexHeatmap::Heatmap(as.matrix(correlation_DC_age %>% subset(p_value <= 0.05) %>% arrange(desc(CAB_NP_assign)) %>% ungroup() %>% dplyr::select(Region, Estimate) %>% remove_rownames() %>% column_to_rownames("Region")), cluster_rows = FALSE, column_names_rot = TRUE, name = "Heatmap of significant correlations\n between degree centrality and Age")
+
 correlation_DC_age %>% subset(p_value <= 0.05) %>% mutate(val = ifelse(Estimate > 0, "Positive", "Negative")) %>% arrange(val)
 ################################################################################
 ################################################################################
@@ -73,7 +75,8 @@ correlation_DC_age %>% subset(p_value <= 0.05) %>% mutate(val = ifelse(Estimate 
 top <- 131 * 0.2
 
 # LOG: Testing if clustering is stable when selecting another top% of regions
-# Initial clustering at 20% yields 2 stable clusters and one who can be subdivided into 3 smaller components (young/old/middle with reduced var)
+# Initial clustering at 20% yields 3 stable clusters 
+# 
 # Same results with 15% and 25%, ~ 70-80 regions for representativity
 # When selecting top 1% of each GT metrics --> 6 regions in total per subject, --> maximizes effects for connector and provincial hubs between young and old
 
@@ -101,7 +104,7 @@ for (i in 1:length(Top_metric_Age_ind)) {
   tmp <- data_functional_role %>%
     filter(Region %in% Hub_df$Region) %>%
     filter(Subj_ID == i) %>%
-    dplyr::select(Subj_ID, Region, `1st_network`, Hub_consensus, Bridgeness)
+    dplyr::select(Subj_ID, Region, `1st_network`, Consensus_vector_0.15, Hub_consensus, Bridgeness)
   Hub_selection[[i]] <- tmp
 
   # Here I compute the proportion of functional roles regarding centrality and information flow
@@ -169,7 +172,7 @@ data_pre_clustering <- data_hubness_profile_Age_ind %>%
 # PCA --------------------------------------------------------------------------
 # Keeping 5 components which explain 90% of variance
 pc <- PCA(data_pre_clustering, ncp = 5, scale.unit = T, axes = c(1, 2))
-pc$eig
+# pc$eig
 dimdesc(pc, axes = 1:5)
 
 data_cluster <- pc$ind$coord %>% as.data.frame()
