@@ -98,32 +98,32 @@ alluvial <- ggplot(
   annotate("text",
     fontface = "bold",
     x = 1.5, y = 128, label = "30%",
-    color = "black", size = 4
+    color = "black", size = 5
   ) +
   annotate("text",
     fontface = "bold",
     x = 1.5, y = 120, label = "36.8%",
-    color = "black", size = 4
+    color = "black", size = 5
   ) +
   annotate("text",
     fontface = "bold",
     x = 1.5, y = 91, label = "38.7%",
-    color = "black", size = 4
+    color = "black", size = 5
   ) +
   annotate("text",
     fontface = "bold",
     x = 1.5, y = 62, label = "30.7%",
-    color = "black", size = 4
+    color = "black", size = 5
   ) +
   annotate("text",
     fontface = "bold",
     x = 1.5, y = 42, label = "28.6%",
-    color = "black", size = 4
+    color = "black", size = 5
   ) +
   annotate("text",
     fontface = "bold",
     x = 1.5, y = 10.75, label = "64.7%",
-    color = "black", size = 4
+    color = "black", size = 5
   ) +
   annotate("text",
     fontface = "bold",

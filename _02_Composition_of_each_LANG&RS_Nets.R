@@ -300,8 +300,28 @@ radarplotting_overlap(Radar_RSN_community, 100, 0, 1, 1,
   palette = c("#00AFBB", "#E7B800", "#FC4E07", "#FF99FF")
 )
 legend(
-  x = "bottomleft", legend = rownames(Radar_RSN_community), horiz = TRUE,
+  x = "bottomleft", title = "Resting-state networks", legend = rownames(Radar_RSN_community), horiz = TRUE,
   bty = "n", pch = 20, col = c("#00AFBB", "#E7B800", "#FC4E07", "#FF99FF"),
   text.col = "black", cex = 1, pt.cex = 2
 )
+
+Radar_RSN_community <- Net_proportion_RS %>%
+  dplyr::select(CAB_NP_assign, freq) %>%
+  spread(CAB_NP_assign, freq) %>%
+  remove_rownames() %>%
+  column_to_rownames(var = "Consensus_vector_0.15") %>%
+  mutate_at(vars(everything()), funs(. * 100))
+
+
+radarplotting_overlap(Radar_RSN_community, 100, 0, 1, 1,
+                      alpha = 0.4, label_size = 1,
+                      title = "Composition of each community\n According to InLang labeling",
+                      palette = c("#00AFBB", "#E7B800", "#FC4E07", "#FF99FF")
+)
+legend(
+  x = "bottomleft", title = "Resting-state networks", legend = rownames(Radar_RSN_community), horiz = TRUE,
+  bty = "n", pch = 20, col = c("#00AFBB", "#E7B800", "#FC4E07", "#FF99FF"),
+  text.col = "black", cex = 1, pt.cex = 2
+)
+
 

@@ -48,7 +48,6 @@ custom_palette <- c(
   "Multi/SM" = "white"
 )
 
-
 ################################################################################
 # State reconfiguration between task & rs-fMRI across the 131 LANG ROIs
 ################################################################################
@@ -67,10 +66,18 @@ addmargins(table(data_131$Consensus_vector_0.15, data_131$LANG_Net_assign))
 
 data_alluvial_community <- data_131 %>%
   dplyr::select(LANG_Net_assign, Consensus_vector_0.15, Region) %>%
-  plyr::rename(c("Consensus_vector_0.15" = "Nets from resting-state data")) %>%
+  mutate(LANG_Net_assign = ifelse(LANG_Net_assign == "1", "Encoding-Decoding", 
+                                  ifelse(LANG_Net_assign == "2", "Control-Executive",
+                                         ifelse(LANG_Net_assign == "3", "Abstract-Conceptual",
+                                         "Sensorimotor")))) %>% 
+  mutate(Consensus_vector_0.15 = ifelse(Consensus_vector_0.15 == "1", "RS-NET 1", 
+                                  ifelse(Consensus_vector_0.15 == "2", "RS-NET 2",
+                                         ifelse(Consensus_vector_0.15 == "3", "RS-NET 3",
+                                                "RS-NET 4")))) %>% 
+  plyr::rename(c("Consensus_vector_0.15" = "RS-Nets")) %>%
   plyr::rename(c("LANG_Net_assign" = "LANG Nets")) %>%
   pivot_longer(
-    cols = c("LANG Nets", "Nets from resting-state data"),
+    cols = c("LANG Nets", "RS-Nets"),
     names_to = "Community_structure",
     values_to = "Communities"
   )
@@ -97,7 +104,7 @@ alluvial_community <- ggplot(
   geom_flow(alpha = .7, curve_type = "arctangent", width = .2, na.rm = TRUE) +
   geom_stratum(alpha = .8) +
   scale_x_discrete(expand = c(.1, .1)) +
-  geom_text(stat = "stratum", label = display_percentage, nudge_x = -0.05) +
+  # geom_text(stat = "stratum", label = display_percentage, nudge_x = -0.05) +
   geom_text(stat = "stratum", label = display_communities) +
   scale_fill_brewer(palette = "Oranges", direction = 1) +
   labs(title = "Reconfiguration of community structure across the 131 LANG ROIs between task-fMRI & rs-fMRI") +
