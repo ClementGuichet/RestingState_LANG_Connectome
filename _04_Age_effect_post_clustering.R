@@ -1,8 +1,8 @@
 ##########################################################################################
-# Script for Age-related analyses and visualization for the hubness profile
+# Script for Age-related analyses and visualization for the topologico-functional profile
 
 # Written by CG
-# 26-11-2022
+# 13-12-2022
 ##########################################################################################
 library(data.table)
 library(RColorBrewer)
@@ -111,8 +111,7 @@ data_box <- data_post_clustering %>%
 
 data_box$Metrics <- factor(data_box$Metrics, levels = c(
   "Connector", "Satellite", "Provincial", "Peripheral",
-  "Local_Bridge", "Global_Bridge", "Super_Bridge", "Balance_eff"
-))
+  "Local_Bridge", "Global_Bridge", "Super_Bridge", "Balance_eff"))
 
 data_box_sig <- data_box %>%
   group_by(Metrics) %>%
@@ -134,9 +133,8 @@ ggplot(data_box, aes(x = Metrics, y = Metric_value)) +
 
 data_box_eff_size <- data_box %>%
   group_by(Metrics) %>%
-  rstatix::cohens_d(Metric_value ~ Median_Age, comparison = list(c("50", "25")), paired = FALSE, hedges.correction = TRUE) %>%
-  filter(effsize > 1 | effsize < -1) %>% 
-  mutate(effsize = effsize * (-1))
+  rstatix::cohens_d(Metric_value ~ Median_Age, comparison = list(c("25", "50")), paired = FALSE, hedges.correction = TRUE) %>%
+  mutate(effsize = effsize * (-1)) %>% filter(magnitude != "negligible")
 
 ggdotchart(
   data_box_eff_size, x = "Metrics", y = "effsize",
@@ -146,6 +144,14 @@ ggdotchart(
   sorting = "descending",
   rotate = TRUE, legend = "none"
 )
+
+cor <- cor.test(data_post_clustering$Global_Bridge, data_post_clustering$Super_Bridge)
+# Creating the plot
+plot(data_post_clustering$Super_Bridge, data_post_clustering$Global_Bridge, pch = 19, col = "lightblue")
+# Regression line
+abline(lm(data_post_clustering$Global_Bridge ~ data_post_clustering$Super_Bridge), col = "red", lwd = 3)
+# Pearson correlation
+text(paste0("Correlation between Super & Global Bridge: ", round(cor$estimate, 2), "****"), x = 50, y = 30)
 
 ################################################################################
 # Topologico-functional profile across clusters  -------------------------------
@@ -174,11 +180,7 @@ legend(
 # Distribution of hubs across RSNs for each cluster for the individual hubs ----
 
 # Get the associated Resting-state networks
-tmp_cluster_1 <- data_functional_role %>% filter(Age != "NaN") %>% 
-  merge(., data_post_clustering %>% dplyr::select(Subj_ID, cluster),
-        by = "Subj_ID"
-  ) %>%
-  dplyr::select(Subj_ID, cluster, Region, `1st_network`)
+tmp_cluster_1 <- data_functional_role %>% filter(Age != "NaN")
 
 # Hub region specific to each subject yielded by hub detection procedure
 data_hub_selection_per_subject <- rbindlist(Hub_selection)
@@ -275,7 +277,69 @@ radarplotting(Radar_functional_role_Region, 100, 20, 2, 2,
 )
 
 
-################################################################################
+# Reconfiguration of global into super bridges with age ---------------
+# Do the hub regions previously considered global bridge become super bridge later in life?
+# Testing informatin flow reconfig
+#
+data_reconfig <- data_functional_role %>%
+  group_by(Subj_ID, CAB_NP_assign, Region, Age, Consensus_vector_0.15, LANG_Net_assign) %>%
+  summarize_at(vars(zFlow, zBT), mean)
+
+gghistogram(data_reconfig,
+            x = "zFlow", y = "..density..",
+            fill = "purple", add_density = TRUE
+) + theme_pubclean()
+
+cor.test(data_reconfig$zFlow, data_reconfig$Age, method = "kendall")
+
+
+gghistogram(data_reconfig,
+            x = "zBT", y = "..density..",
+            fill = "purple", add_density = TRUE
+) + theme_pubclean()
+
+cor.test(data_reconfig$zBT, data_reconfig$Age, method = "kendall")
+
+
+gghistogram(data_post_clustering,
+            x = "Not_a_Bridge", y = "..density..",
+            fill = "purple", add_density = TRUE
+) + theme_pubclean()
+
+
+data_reconfig_mediation_zFlow <- tmp_cluster_final %>% filter(cluster == "25" | cluster == "50") %>% 
+  group_by(Region, cluster) %>% summarise_at(vars(zFlow), mean) %>% spread(cluster, zFlow) %>% mutate(zFlow_diff = `50`-`25`)
+
+data_reconfig_mediation <- tmp_cluster_final %>% filter(cluster == "25" | cluster == "50") %>% 
+  group_by(Region, cluster, Bridgeness) %>% summarise(n = n()) %>% 
+  mutate(freq = n / sum(n)) %>% ungroup() %>% 
+  mutate(reconfig = ifelse(cluster == "25" & Bridgeness == "Global_Bridge", "GB_25",
+                           ifelse(cluster == "25" & Bridgeness == "Super_Bridge", "SP_25",
+                                  ifelse(cluster == "50" & Bridgeness == "Super_Bridge", "SP_50", 0)))) %>% filter(reconfig != 0) %>% 
+  ungroup() %>% dplyr::select(Region, freq, reconfig) %>%
+  spread(reconfig, freq) %>% mutate_all(., ~replace(., is.na(.), 0))
+
+mediation <- cbind(data_reconfig_mediation, zFlow = data_reconfig_mediation_zFlow$zFlow_diff) %>%
+  dplyr::select(-Region) %>% scale(.)
+
+  
+library(lavaan)
+library(semPlot)
+
+mod <- '
+  SP_50 ~direct*GB_25
+  zFlow ~ ind1*GB_25
+  SP_50 ~ ind2*zFlow
+  ind := ind1*ind2
+  dir := direct
+  tot := ind1*ind2 + direct
+'
+
+fit <- sem(mod, data = mediation)
+summary(fit)
+
+semPaths(fit, 'std', layout = 'circle', thresholds = TRUE)
+##########################################################################
 # Difference in the Topologico-functional profile ------------------------------
 ################################################################################
 
@@ -291,12 +355,7 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
   # Retain only the rows specific of the two clusters
   tmp_cluster_0 <- data_post_clustering %>% subset(cluster == a | cluster == b)
   # Get the associated Resting-state networks
-  tmp_cluster_1 <- filter(data_functional_role, Subj_ID %in% tmp_cluster_0$Subj_ID) %>%
-    merge(., tmp_cluster_0 %>% dplyr::select(Subj_ID, cluster),
-          by = "Subj_ID"
-    ) %>%
-    dplyr::select(Subj_ID, cluster, Region, `1st_network`)
-  
+  tmp_cluster_1 <- filter(data_functional_role, Subj_ID %in% tmp_cluster_0$Subj_ID)
   # 2a
   # Hub region specific to each subject yielded by hub detection procedure
   data_hub_selection_per_subject <- rbindlist(Hub_selection)
@@ -379,7 +438,7 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
     summarise(n = n()) %>%
     mutate(freq = n / sum(n)) %>%
     spread(Bridgeness, freq) %>%
-    dplyr::select(-c(None, n)) %>%
+    dplyr::select(-n) %>%
     # Make sure comparisons with missing functional roles can be achieved
     mutate_all(., ~ replace(., is.na(.), 0)) %>%
     group_by(`1st_network`, cluster) %>%
@@ -529,12 +588,7 @@ interaction_Age_FuncRole_community <- function(cluster1, cluster2, max, min, max
   # Retain only the rows specific of the two clusters
   tmp_cluster_0 <- data_post_clustering %>% subset(cluster == a | cluster == b)
   # Get the associated Resting-state networks
-  tmp_cluster_1 <- filter(data_functional_role, Subj_ID %in% tmp_cluster_0$Subj_ID) %>%
-    merge(., tmp_cluster_0 %>% dplyr::select(Subj_ID, cluster),
-          by = "Subj_ID"
-    ) %>%
-    dplyr::select(Subj_ID, cluster, Region, Consensus_vector_0.15)
-  
+  tmp_cluster_1 <- filter(data_functional_role, Subj_ID %in% tmp_cluster_0$Subj_ID) 
   # 2a
   # Hub region specific to each subject yielded by hub detection procedure
   data_hub_selection_per_subject <- rbindlist(Hub_selection)
@@ -594,7 +648,7 @@ interaction_Age_FuncRole_community <- function(cluster1, cluster2, max, min, max
     summarise(n = n()) %>%
     mutate(freq = n / sum(n)) %>%
     spread(Bridgeness, freq) %>%
-    dplyr::select(-c(None, n)) %>%
+    dplyr::select(-n) %>%
     # Make sure comparisons with missing functional roles can be achieved
     mutate_all(., ~ replace(., is.na(.), 0)) %>%
     group_by(Consensus_vector_0.15, cluster) %>%

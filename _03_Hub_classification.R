@@ -76,7 +76,7 @@ data_functional_role <- data_bind_PC_Wz %>%
   mutate(zFlow = as.numeric(scale(Flow_coeff))) %>%
   mutate(Bridgeness = ifelse(zBT > 0 & zFlow < 0, "Global_Bridge",
     ifelse(zFlow > 0 & zBT < 0, "Local_Bridge",
-      ifelse(zBT > 0 & zFlow > 0, "Super_Bridge", "None")
+      ifelse(zBT > 0 & zFlow > 0, "Super_Bridge", "Not_a_Bridge")
     )
   )) %>%
   # Normalizing at the community level with the affiliation vector from consensus clustering

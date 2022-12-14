@@ -19,7 +19,7 @@ source("_radarplotting_function.R")
 
 # What are the graph-based biomarkers of health aging ?
 # Does the hubness profile, that is the proportion of functional role, changes throughout life ?
-#
+# 
 ################################################################################
 # Correlation between degree centrality and Age --------------------------------
 # Inferential statistics
@@ -104,7 +104,7 @@ for (i in 1:length(Top_metric_Age_ind)) {
   tmp <- data_functional_role %>%
     filter(Region %in% Hub_df$Region) %>%
     filter(Subj_ID == i) %>%
-    dplyr::select(Subj_ID, Region, `1st_network`, Consensus_vector_0.15, Hub_consensus, Bridgeness)
+    dplyr::select(Subj_ID, Region, `1st_network`, Consensus_vector_0.15, Hub_consensus, Bridgeness, zFlow)
   Hub_selection[[i]] <- tmp
 
   # Here I compute the proportion of functional roles regarding centrality and information flow
@@ -145,7 +145,7 @@ data_cluster_efficiency <- data_functional_role %>%
 
 # Putting everything together
 data_hubness_profile_Age_ind <- cbind(
-  rbindlist(FR_list, fill = TRUE) %>% dplyr::select(-None) %>%
+  rbindlist(FR_list, fill = TRUE) %>% 
     mutate_all(., ~ replace(., is.na(.), 0)) %>% mutate_at(vars(everything()), funs(. * 100)),
   data_functional_role %>% group_by(Subj_ID, Gender) %>% summarise_at(vars(Age), mean) %>% arrange(Subj_ID),
   Balance_eff = data_cluster_efficiency$Balance_eff
@@ -165,14 +165,14 @@ data_hubness_profile_Age_ind %>%
   ggtitle("Evolution of functional roles across adult lifespan")
 
 data_pre_clustering <- data_hubness_profile_Age_ind %>%
-  dplyr::select(-c(Subj_ID, Age, Gender))
+  dplyr::select(-c(Subj_ID, Age, Gender, None, Not_a_Bridge))
 
 
 ################################################################################
 # PCA --------------------------------------------------------------------------
 # Keeping 5 components which explain 90% of variance
 pc <- PCA(data_pre_clustering, ncp = 5, scale.unit = T, axes = c(1, 2))
-# pc$eig
+pc$eig
 dimdesc(pc, axes = 1:5)
 
 data_cluster <- pc$ind$coord %>% as.data.frame()
@@ -230,6 +230,6 @@ d <- dist(data_cluster, method = "euclidean")
 final_clust <- hclust(d, method = "ward.D2")
 groups <- cutree(final_clust, k = 3)
 
-data_post_clustering <- cbind(data_hubness_profile_Age_ind, cluster = groups)
 
-
+data_post_clustering <- cbind(data_hubness_profile_Age_ind, cluster = groups) %>% 
+  dplyr::select(-c(None, Not_a_Bridge))
