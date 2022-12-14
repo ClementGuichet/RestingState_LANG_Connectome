@@ -277,68 +277,7 @@ radarplotting(Radar_functional_role_Region, 100, 20, 2, 2,
 )
 
 
-# Reconfiguration of global into super bridges with age ---------------
-# Do the hub regions previously considered global bridge become super bridge later in life?
-# Testing informatin flow reconfig
-#
-data_reconfig <- data_functional_role %>%
-  group_by(Subj_ID, CAB_NP_assign, Region, Age, Consensus_vector_0.15, LANG_Net_assign) %>%
-  summarize_at(vars(zFlow, zBT), mean)
 
-gghistogram(data_reconfig,
-            x = "zFlow", y = "..density..",
-            fill = "purple", add_density = TRUE
-) + theme_pubclean()
-
-cor.test(data_reconfig$zFlow, data_reconfig$Age, method = "kendall")
-
-
-gghistogram(data_reconfig,
-            x = "zBT", y = "..density..",
-            fill = "purple", add_density = TRUE
-) + theme_pubclean()
-
-cor.test(data_reconfig$zBT, data_reconfig$Age, method = "kendall")
-
-
-gghistogram(data_post_clustering,
-            x = "Not_a_Bridge", y = "..density..",
-            fill = "purple", add_density = TRUE
-) + theme_pubclean()
-
-
-data_reconfig_mediation_zFlow <- tmp_cluster_final %>% filter(cluster == "25" | cluster == "50") %>% 
-  group_by(Region, cluster) %>% summarise_at(vars(zFlow), mean) %>% spread(cluster, zFlow) %>% mutate(zFlow_diff = `50`-`25`)
-
-data_reconfig_mediation <- tmp_cluster_final %>% filter(cluster == "25" | cluster == "50") %>% 
-  group_by(Region, cluster, Bridgeness) %>% summarise(n = n()) %>% 
-  mutate(freq = n / sum(n)) %>% ungroup() %>% 
-  mutate(reconfig = ifelse(cluster == "25" & Bridgeness == "Global_Bridge", "GB_25",
-                           ifelse(cluster == "25" & Bridgeness == "Super_Bridge", "SP_25",
-                                  ifelse(cluster == "50" & Bridgeness == "Super_Bridge", "SP_50", 0)))) %>% filter(reconfig != 0) %>% 
-  ungroup() %>% dplyr::select(Region, freq, reconfig) %>%
-  spread(reconfig, freq) %>% mutate_all(., ~replace(., is.na(.), 0))
-
-mediation <- cbind(data_reconfig_mediation, zFlow = data_reconfig_mediation_zFlow$zFlow_diff) %>%
-  dplyr::select(-Region) %>% scale(.)
-
-  
-library(lavaan)
-library(semPlot)
-
-mod <- '
-  SP_50 ~direct*GB_25
-  zFlow ~ ind1*GB_25
-  SP_50 ~ ind2*zFlow
-  ind := ind1*ind2
-  dir := direct
-  tot := ind1*ind2 + direct
-'
-
-fit <- sem(mod, data = mediation)
-summary(fit)
-
-semPaths(fit, 'std', layout = 'circle', thresholds = TRUE)
 ##########################################################################
 # Difference in the Topologico-functional profile ------------------------------
 ################################################################################
