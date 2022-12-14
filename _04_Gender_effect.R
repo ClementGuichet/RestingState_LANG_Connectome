@@ -58,6 +58,7 @@ data_stat_gender %>%
   group_by(Region, Gender) %>%
   get_summary_stats(DC, type = "median_iqr")
 
+            
 M <- gghistogram(data_stat_gender %>% subset(Gender == "M"),
   x = "DC", y = "..density..",
   fill = "purple", add_density = TRUE
@@ -67,6 +68,7 @@ F <- gghistogram(data_stat_gender %>% subset(Gender == "F"),
   fill = "purple", add_density = TRUE
 ) + theme_pubclean()
 Rmisc::multiplot(M, F)
+
 # Is there any significant difference between men and women degree centrality in each region?
 # Mann-Withney U for right-skewed data
 # Brunner-Munzel test for heteroskedastic-robustness
@@ -97,6 +99,9 @@ ggdotchart(
 )
 
 t_test_gender %>% subset(p_value <= 0.05) %>% mutate(val = ifelse(statistic_BM > 0, "Positive", "Negative")) %>% arrange(val)
+
+ComplexHeatmap::Heatmap(as.matrix(t_test_gender %>% subset(p_value <= 0.05) %>% arrange(desc(statistic_BM)) %>% ungroup() %>% dplyr::select(Region, Estimate_BM) %>% remove_rownames() %>% column_to_rownames("Region")), cluster_rows = FALSE, column_names_rot = TRUE, name = "Heatmap of significant correlations\n between degree centrality and Gender")
+
 
 ################################################################################
 # Modular composition between Men & Women --------------------------------------
@@ -747,9 +752,9 @@ Gender_RSN_prop_2 <- data_gender_final %>%
   pivot_longer(cols = !c("1st_network", "Subj_ID","Gender"), names_to = "Bridgeness", values_to = "freq")
 
 Gender_RSN_prop_final <- bind_rows(Gender_RSN_prop_1, Gender_RSN_prop_2) %>% 
-  mutate(Functional_role = ifelse(is.na(Hub_consensus_gender) == TRUE, Bridgeness, Hub_consensus_gender)) %>% subset(Functional_role != "None") %>% 
+  mutate(Functional_role = ifelse(is.na(Hub_consensus_gender) == TRUE, Bridgeness, Hub_consensus_gender)) %>% subset(Functional_role != "None") 
   # Based on the ratio observed with the radar plot
-  filter(grepl("Auditory|Language|FPN|DMN|PMM", `1st_network`))
+  # filter(grepl("Language|FPN|DMN", `1st_network`))
 
 data_box_sig <- Gender_RSN_prop_final %>%
   group_by(`1st_network`, Functional_role) %>%

@@ -44,12 +44,6 @@ gghistogram(data_reconfig,
 cor.test(data_reconfig$zBT, data_reconfig$Age, method = "kendall")
 
 
-gghistogram(data_post_clustering,
-  x = "Not_a_Bridge", y = "..density..",
-  fill = "purple", add_density = TRUE
-) + theme_pubclean()
-
-
 # Mediation
 
 data_reconfig_mediation_zFlow <- tmp_cluster_final %>%
@@ -86,19 +80,20 @@ mediation <- cbind(data_reconfig_mediation, zFlow = data_reconfig_mediation_zFlo
 
 
 mod <- "
-  zFlow ~ ind1*GB_25 + ind2*NB_25
+  zFlow ~ ind1*GB_25 
+  # + ind2*NB_25
   SP_50 ~ direct1*GB_25 + ind3*zFlow
-  LB_50 ~ direct2*NB_25 + ind4*zFlow
+  # LB_50 ~ direct2*NB_25 + ind4*zFlow
   dir_up := direct1
-  dir_down := direct2
+  # dir_down := direct2
   mediation_up := ind1*ind3
-  mediation_down := ind2*ind4
+  # mediation_down := ind2*ind4
   tot_up := (ind1*ind3) + direct1
-  tot_down := (ind2 + ind4) + direct2
-  total := (ind1*ind3) + direct1 + (ind2 + ind4) + direct2
+  # tot_down := (ind2 + ind4) + direct2
+  # total := (ind1*ind3) + direct1 + (ind2 + ind4) + direct2
 "
 
 fit <- sem(mod, data = mediation)
 summary(fit, standardized = TRUE, fit.measures = TRUE, rsquare = TRUE, ci = TRUE)
 parameterEstimates(fit, level = 0.95, boot.ci.type = "bca.simple", standardized = TRUE)
-semPaths(fit, "est", layout = "tree", edge.label.cex = 1.25, fade = FALSE)
+semPaths(fit, "est", layout = "tree2", edge.label.cex = 1.25, fade = FALSE)

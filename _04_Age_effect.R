@@ -62,8 +62,6 @@ ggdotchart(
 )
 
 ComplexHeatmap::Heatmap(as.matrix(correlation_DC_age %>% subset(p_value <= 0.05) %>% arrange(desc(CAB_NP_assign)) %>% ungroup() %>% dplyr::select(Region, Estimate) %>% remove_rownames() %>% column_to_rownames("Region")), cluster_rows = FALSE, column_names_rot = TRUE, name = "Heatmap of significant correlations\n between degree centrality and Age")
-
-correlation_DC_age %>% subset(p_value <= 0.05) %>% mutate(val = ifelse(Estimate > 0, "Positive", "Negative")) %>% arrange(val)
 ################################################################################
 ################################################################################
 # ~~~~~~~~~~~ Hub Detection Procedure ~~~~~~~~~~~
