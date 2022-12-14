@@ -9,11 +9,12 @@ Method Overview
 
 Features
 
-- Original nodal functional role classification according to nodal centrality and information flow
+- Original methodology for accurate RSN assignment (with voxel-level precision) to ROIs 
+- New functional hub classification according to nodal centrality and information flow
 (i.e., degree, Participation coefficient, Within-module_z-score, Betweenness centrality, Flow coefficient)
-- Individual hub detection procedure
-- Data-driven approach for Age and Gender-related effects
-- Original hubness profile visualization
+- Individualized hub detection procedure
+- Data-driven approach for Age (Wald Hierarchical clustering) and Gender-related effects
+- New topologico-functional profile visualization and their n-way interactions with Age, Gender, Resting-state-networks, Community structure
  
 ## Author
 **Clément Guichet**
