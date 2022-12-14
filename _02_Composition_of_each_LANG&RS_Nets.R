@@ -175,9 +175,9 @@ Radar_RSN_LANG_Nets <- Net_proportion_ImCalc_weighted %>%
 
 
 radarplotting_overlap(Radar_RSN_LANG_Nets, 100, 0, 1, 1,
-                      alpha = 0.4, label_size = 1,
-                      title = "Composition of each LANG Net (Network_overlap_calc)",
-                      palette = c("#00AFBB", "#E7B800", "#FC4E07", "#FF99FF")
+  alpha = 0.4, label_size = 1,
+  title = "Composition of each LANG Net (Network_overlap_calc)",
+  palette = c("#00AFBB", "#E7B800", "#FC4E07", "#FF99FF")
 )
 legend(
   x = "bottomleft", legend = rownames(Radar_RSN_LANG_Nets), horiz = TRUE,
@@ -314,14 +314,12 @@ Radar_RSN_community <- Net_proportion_RS %>%
 
 
 radarplotting_overlap(Radar_RSN_community, 100, 0, 1, 1,
-                      alpha = 0.4, label_size = 1,
-                      title = "Composition of each community\n According to InLang labeling",
-                      palette = c("#00AFBB", "#E7B800", "#FC4E07", "#FF99FF")
+  alpha = 0.4, label_size = 1,
+  title = "Composition of each community\n According to InLang labeling",
+  palette = c("#00AFBB", "#E7B800", "#FC4E07", "#FF99FF")
 )
 legend(
   x = "bottomleft", title = "Resting-state networks", legend = rownames(Radar_RSN_community), horiz = TRUE,
   bty = "n", pch = 20, col = c("#00AFBB", "#E7B800", "#FC4E07", "#FF99FF"),
   text.col = "black", cex = 1, pt.cex = 2
 )
-
-

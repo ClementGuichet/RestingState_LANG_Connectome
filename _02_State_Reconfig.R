@@ -66,14 +66,20 @@ addmargins(table(data_131$Consensus_vector_0.15, data_131$LANG_Net_assign))
 
 data_alluvial_community <- data_131 %>%
   dplyr::select(LANG_Net_assign, Consensus_vector_0.15, Region) %>%
-  mutate(LANG_Net_assign = ifelse(LANG_Net_assign == "1", "Encoding-Decoding", 
-                                  ifelse(LANG_Net_assign == "2", "Control-Executive",
-                                         ifelse(LANG_Net_assign == "3", "Abstract-Conceptual",
-                                         "Sensorimotor")))) %>% 
-  mutate(Consensus_vector_0.15 = ifelse(Consensus_vector_0.15 == "1", "RS-NET 1", 
-                                  ifelse(Consensus_vector_0.15 == "2", "RS-NET 2",
-                                         ifelse(Consensus_vector_0.15 == "3", "RS-NET 3",
-                                                "RS-NET 4")))) %>% 
+  mutate(LANG_Net_assign = ifelse(LANG_Net_assign == "1", "Encoding-Decoding",
+    ifelse(LANG_Net_assign == "2", "Control-Executive",
+      ifelse(LANG_Net_assign == "3", "Abstract-Conceptual",
+        "Sensorimotor"
+      )
+    )
+  )) %>%
+  mutate(Consensus_vector_0.15 = ifelse(Consensus_vector_0.15 == "1", "RS-NET 1",
+    ifelse(Consensus_vector_0.15 == "2", "RS-NET 2",
+      ifelse(Consensus_vector_0.15 == "3", "RS-NET 3",
+        "RS-NET 4"
+      )
+    )
+  )) %>%
   plyr::rename(c("Consensus_vector_0.15" = "RS-Nets")) %>%
   plyr::rename(c("LANG_Net_assign" = "LANG Nets")) %>%
   pivot_longer(

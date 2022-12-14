@@ -1,5 +1,5 @@
 ##########################################################################################
-# Script for Age-related analyses and visualization for the hubness profile
+# Script for Age-related analyses
 
 # Written by CG
 # 26-11-2022
@@ -10,6 +10,7 @@ library(rstatix)
 library(Rmisc)
 library(fitdistrplus)
 library(sigclust2)
+library(ggpubr)
 
 
 rm(list = ls())
@@ -18,8 +19,8 @@ source("_03_Hub_classification.R")
 source("_radarplotting_function.R")
 
 # What are the graph-based biomarkers of health aging ?
-# Does the hubness profile, that is the proportion of functional role, changes throughout life ?
-# 
+# Does the topological_functional profile, that is the proportion of the hubs' functional role, change throughout life ?
+
 ################################################################################
 # Correlation between degree centrality and Age --------------------------------
 # Inferential statistics
@@ -62,19 +63,19 @@ ggdotchart(
 )
 
 ComplexHeatmap::Heatmap(as.matrix(correlation_DC_age %>% subset(p_value <= 0.05) %>% arrange(desc(CAB_NP_assign)) %>% ungroup() %>% dplyr::select(Region, Estimate) %>% remove_rownames() %>% column_to_rownames("Region")), cluster_rows = FALSE, column_names_rot = TRUE, name = "Heatmap of significant correlations\n between degree centrality and Age")
-################################################################################
+
 ################################################################################
 # ~~~~~~~~~~~ Hub Detection Procedure ~~~~~~~~~~~
 ################################################################################
-# Method 1 ~ Detect top % regions for each metric ------------------------------
+# Method ~ Detect top % regions for each metric ------------------------------
 
 # Hubness profile with hub detection at the individual level -------------------
 
 top <- 131 * 0.2
 
 # LOG: Testing if clustering is stable when selecting another top% of regions
-# Initial clustering at 20% yields 3 stable clusters 
-# 
+# Initial clustering at 20% yields 3 stable clusters
+#
 # Same results with 15% and 25%, ~ 70-80 regions for representativity
 # When selecting top 1% of each GT metrics --> 6 regions in total per subject, --> maximizes effects for connector and provincial hubs between young and old
 
@@ -126,8 +127,12 @@ for (i in 1:length(Top_metric_Age_ind)) {
 
 
 # What are the most common hubs across subjects?
-most_common_hubs <- rbindlist(Hub_selection) %>% count(Region, `1st_network`) %>% 
-  mutate(n = n/72) %>% arrange(desc(n)) %>% filter(n > 0.8) %>% mutate_at(vars(n), funs(. * 100))
+most_common_hubs <- rbindlist(Hub_selection) %>%
+  count(Region, `1st_network`) %>%
+  mutate(n = n / 72) %>%
+  arrange(desc(n)) %>%
+  filter(n > 0.8) %>%
+  mutate_at(vars(n), funs(. * 100))
 
 ###############################################################################
 # Getting ready for hierarchical clustering analysis
@@ -143,7 +148,7 @@ data_cluster_efficiency <- data_functional_role %>%
 
 # Putting everything together
 data_hubness_profile_Age_ind <- cbind(
-  rbindlist(FR_list, fill = TRUE) %>% 
+  rbindlist(FR_list, fill = TRUE) %>%
     mutate_all(., ~ replace(., is.na(.), 0)) %>% mutate_at(vars(everything()), funs(. * 100)),
   data_functional_role %>% group_by(Subj_ID, Gender) %>% summarise_at(vars(Age), mean) %>% arrange(Subj_ID),
   Balance_eff = data_cluster_efficiency$Balance_eff
@@ -229,5 +234,5 @@ final_clust <- hclust(d, method = "ward.D2")
 groups <- cutree(final_clust, k = 3)
 
 
-data_post_clustering <- cbind(data_hubness_profile_Age_ind, cluster = groups) %>% 
+data_post_clustering <- cbind(data_hubness_profile_Age_ind, cluster = groups) %>%
   dplyr::select(-c(None, Not_a_Bridge))

@@ -25,7 +25,7 @@ text(paste0("Correlation between Super & Global Bridge: ", round(cor$estimate, 2
 
 # Testing informatin flow reconfig
 data_reconfig <- data_functional_role %>%
-  group_by(Subj_ID, CAB_NP_assign, Region, Age, Consensus_vector_0.15, LANG_Net_assign) %>%
+  group_by(Subj_ID, CAB_NP_assign, `1st_network`, Region, Age, Consensus_vector_0.15, LANG_Net_assign) %>%
   summarize_at(vars(zFlow, zBT), mean)
 
 gghistogram(data_reconfig,
@@ -42,7 +42,6 @@ gghistogram(data_reconfig,
 ) + theme_pubclean()
 
 cor.test(data_reconfig$zBT, data_reconfig$Age, method = "kendall")
-
 
 # Mediation
 
@@ -80,7 +79,7 @@ mediation <- cbind(data_reconfig_mediation, zFlow = data_reconfig_mediation_zFlo
 
 
 mod <- "
-  zFlow ~ ind1*GB_25 
+  zFlow ~ ind1*GB_25
   # + ind2*NB_25
   SP_50 ~ direct1*GB_25 + ind3*zFlow
   # LB_50 ~ direct2*NB_25 + ind4*zFlow

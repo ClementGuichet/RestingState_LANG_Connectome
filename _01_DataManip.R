@@ -189,4 +189,3 @@ data_full_per_region <- merge(data_global_per_region, meta_data_0, by = "Region"
 ################################################################################
 # Output-------------------------------
 rm(list = ls()[!ls() %in% c("data_full", "data_full_per_subject", "data_full_per_region")])
-

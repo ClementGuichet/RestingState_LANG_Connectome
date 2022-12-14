@@ -47,7 +47,7 @@ custom_palette <- c(
 # ~~~~~~~~~~~ Gender effect ~~~~~~~~~~~
 by(data_full_per_subject %>% subset(threshold == "0.15"), factor((data_full_per_subject %>% subset(threshold == "0.15"))$Gender), summary)
 
-data_stat_gender <- data_functional_role %>% 
+data_stat_gender <- data_functional_role %>%
   group_by(Subj_ID, CAB_NP_assign, Region, Gender, Consensus_vector_0.15, LANG_Net_assign) %>%
   summarize_at(vars(degree), mean) %>%
   filter(Gender != "NaN") %>%
@@ -58,7 +58,7 @@ data_stat_gender %>%
   group_by(Region, Gender) %>%
   get_summary_stats(DC, type = "median_iqr")
 
-            
+
 M <- gghistogram(data_stat_gender %>% subset(Gender == "M"),
   x = "DC", y = "..density..",
   fill = "purple", add_density = TRUE
@@ -98,7 +98,10 @@ ggdotchart(
   rotate = TRUE, legend = "none"
 )
 
-t_test_gender %>% subset(p_value <= 0.05) %>% mutate(val = ifelse(statistic_BM > 0, "Positive", "Negative")) %>% arrange(val)
+t_test_gender %>%
+  subset(p_value <= 0.05) %>%
+  mutate(val = ifelse(statistic_BM > 0, "Positive", "Negative")) %>%
+  arrange(val)
 
 ComplexHeatmap::Heatmap(as.matrix(t_test_gender %>% subset(p_value <= 0.05) %>% arrange(desc(statistic_BM)) %>% ungroup() %>% dplyr::select(Region, Estimate_BM) %>% remove_rownames() %>% column_to_rownames("Region")), cluster_rows = FALSE, column_names_rot = TRUE, name = "Heatmap of significant correlations\n between degree centrality and Gender")
 
@@ -573,7 +576,7 @@ data_cluster_efficiency_gender <- data_gender_1 %>%
   mutate_at(vars(Balance_eff), funs(. * 100))
 
 data_FR_Gender_ind <- cbind(
-  rbindlist(FR_list_gender, fill = TRUE) %>% 
+  rbindlist(FR_list_gender, fill = TRUE) %>%
     mutate_all(., ~ replace(., is.na(.), 0)) %>% mutate_at(vars(everything()), funs(. * 100)),
   Balance_eff = data_cluster_efficiency_gender$Balance_eff,
   data_full_per_subject %>% filter(Gender != "NaN") %>%
@@ -609,26 +612,27 @@ interaction_gender_FuncRole_RSN <- function(cluster1, cluster2, alpha) {
   # Hub region specific to each subject yielded by hub detection procedure
   data_hub_selection_per_subject_gender <- rbindlist(Hub_selection_gender)
 
-  data_gender_final <- merge(data_hub_selection_per_subject_gender, data_gender_1_helper_vector %>% 
-                               dplyr::select(helper_vector, Subj_ID, Gender, Region),
-      by = c("helper_vector", "Region")
-    )
-  
-  Radar_hub_RSN <- data_gender_final %>% 
+  data_gender_final <- merge(data_hub_selection_per_subject_gender, data_gender_1_helper_vector %>%
+    dplyr::select(helper_vector, Subj_ID, Gender, Region),
+  by = c("helper_vector", "Region")
+  )
+
+  Radar_hub_RSN <- data_gender_final %>%
     group_by(Gender, `1st_network`) %>%
     summarise(n = n()) %>%
     mutate(freq = n / sum(n)) %>%
-    dplyr::select(-n) %>% 
-    spread(`1st_network`, freq) %>% 
-    remove_rownames() %>% column_to_rownames("Gender") %>% 
+    dplyr::select(-n) %>%
+    spread(`1st_network`, freq) %>%
+    remove_rownames() %>%
+    column_to_rownames("Gender") %>%
     mutate_at(vars(everything()), funs(. * 100))
-  
+
   radarplotting_overlap(Radar_hub_RSN, 25, 0, 1, 1,
-                        alpha = 0.05, label_size = 1,
-                        title_fill = "Distribution of hubs regions across RSNs",
-                        palette = RColorBrewer::brewer.pal(8, "Dark2")
+    alpha = 0.05, label_size = 1,
+    title_fill = "Distribution of hubs regions across RSNs",
+    palette = RColorBrewer::brewer.pal(8, "Dark2")
   )
-  
+
   legend(
     x = "bottomleft", title = "Gender",
     legend = rownames(Radar_hub_RSN), horiz = TRUE,
@@ -639,18 +643,18 @@ interaction_gender_FuncRole_RSN <- function(cluster1, cluster2, alpha) {
   delta_proportion_a <- data_gender_final %>%
     group_by(`1st_network`, Gender, Hub_consensus_gender) %>%
     summarise(n = n()) %>%
-    mutate(freq = n / sum(n)) %>% 
+    mutate(freq = n / sum(n)) %>%
     # Make sure comparisons with missing functional roles can be achieved
     spread(Hub_consensus_gender, freq) %>%
     dplyr::select(-n) %>%
-    mutate_all(., ~ replace(., is.na(.), 0)) %>% 
+    mutate_all(., ~ replace(., is.na(.), 0)) %>%
     group_by(`1st_network`, Gender) %>%
-    summarize_at(vars(Connector:Satellite), sum) %>% 
+    summarize_at(vars(Connector:Satellite), sum) %>%
     pivot_longer(cols = !c("1st_network", "Gender"), names_to = "Hub_consensus_gender", values_to = "freq") %>%
     # Compute the difference in proportion of a given functional role within each RSN
     arrange(Gender) %>%
     group_by(`1st_network`, Hub_consensus_gender) %>%
-    mutate(delta_freq = freq / lag(freq)) %>% 
+    mutate(delta_freq = freq / lag(freq)) %>%
     dplyr::select(-Gender) %>%
     na.omit()
 
@@ -668,15 +672,15 @@ interaction_gender_FuncRole_RSN <- function(cluster1, cluster2, alpha) {
     # Compute the difference in proportion of a given functional role within each RSN
     arrange(Gender) %>%
     group_by(`1st_network`, Bridgeness) %>%
-    mutate(delta_freq = freq / lag(freq)) %>% 
+    mutate(delta_freq = freq / lag(freq)) %>%
     dplyr::select(-Gender) %>%
     na.omit()
 
   Radar_functional_role_RSN_delta <-
     delta_proportion_a %>%
     dplyr::select(`1st_network`, Hub_consensus_gender, delta_freq) %>%
-    subset(Hub_consensus_gender != "None") %>% 
-    mutate(`1st_network` = ifelse(delta_freq == "Inf"|delta_freq == 0, paste0(`1st_network`, "*"), `1st_network`)) %>% 
+    subset(Hub_consensus_gender != "None") %>%
+    mutate(`1st_network` = ifelse(delta_freq == "Inf" | delta_freq == 0, paste0(`1st_network`, "*"), `1st_network`)) %>%
     mutate(delta_freq = ifelse(delta_freq == "Inf", 1, delta_freq)) %>%
     spread(`1st_network`, delta_freq) %>%
     remove_rownames() %>%
@@ -698,9 +702,9 @@ interaction_gender_FuncRole_RSN <- function(cluster1, cluster2, alpha) {
   Radar_functional_role_RSN_delta <-
     delta_proportion_b %>%
     dplyr::select(`1st_network`, Bridgeness, delta_freq) %>%
-    subset(Bridgeness != "Not_a_Bridge") %>% 
-    mutate(`1st_network` = ifelse(delta_freq == "Inf"|delta_freq == 0, paste0(`1st_network`, "*"), `1st_network`)) %>%
-    mutate(delta_freq = ifelse(delta_freq == "Inf", 1, delta_freq)) %>% 
+    subset(Bridgeness != "Not_a_Bridge") %>%
+    mutate(`1st_network` = ifelse(delta_freq == "Inf" | delta_freq == 0, paste0(`1st_network`, "*"), `1st_network`)) %>%
+    mutate(delta_freq = ifelse(delta_freq == "Inf", 1, delta_freq)) %>%
     spread(`1st_network`, delta_freq) %>%
     remove_rownames() %>%
     column_to_rownames(var = "Bridgeness")
@@ -730,14 +734,14 @@ interaction_gender_FuncRole_RSN("M", "F", 0.2)
 Gender_RSN_prop_1 <- data_gender_final %>%
   group_by(`1st_network`, Subj_ID, Gender, Hub_consensus_gender) %>%
   summarise(n = n()) %>%
-  mutate(freq = n / sum(n)) %>% 
+  mutate(freq = n / sum(n)) %>%
   # Make sure comparisons with missing functional roles can be achieved
   spread(Hub_consensus_gender, freq) %>%
   dplyr::select(-n) %>%
-  mutate_all(., ~ replace(., is.na(.), 0)) %>% 
+  mutate_all(., ~ replace(., is.na(.), 0)) %>%
   group_by(`1st_network`, Subj_ID, Gender) %>%
-  summarize_at(vars(Connector:Satellite), sum) %>% 
-  pivot_longer(cols = !c("1st_network", "Subj_ID","Gender"), names_to = "Hub_consensus_gender", values_to = "freq") 
+  summarize_at(vars(Connector:Satellite), sum) %>%
+  pivot_longer(cols = !c("1st_network", "Subj_ID", "Gender"), names_to = "Hub_consensus_gender", values_to = "freq")
 
 Gender_RSN_prop_2 <- data_gender_final %>%
   group_by(`1st_network`, Subj_ID, Gender, Bridgeness) %>%
@@ -749,16 +753,17 @@ Gender_RSN_prop_2 <- data_gender_final %>%
   mutate_all(., ~ replace(., is.na(.), 0)) %>%
   group_by(`1st_network`, Subj_ID, Gender) %>%
   summarize_at(vars(Global_Bridge, Local_Bridge, Super_Bridge), sum) %>%
-  pivot_longer(cols = !c("1st_network", "Subj_ID","Gender"), names_to = "Bridgeness", values_to = "freq")
+  pivot_longer(cols = !c("1st_network", "Subj_ID", "Gender"), names_to = "Bridgeness", values_to = "freq")
 
-Gender_RSN_prop_final <- bind_rows(Gender_RSN_prop_1, Gender_RSN_prop_2) %>% 
-  mutate(Functional_role = ifelse(is.na(Hub_consensus_gender) == TRUE, Bridgeness, Hub_consensus_gender)) %>% subset(Functional_role != "None") 
-  # Based on the ratio observed with the radar plot
-  # filter(grepl("Language|FPN|DMN", `1st_network`))
+Gender_RSN_prop_final <- bind_rows(Gender_RSN_prop_1, Gender_RSN_prop_2) %>%
+  mutate(Functional_role = ifelse(is.na(Hub_consensus_gender) == TRUE, Bridgeness, Hub_consensus_gender)) %>%
+  subset(Functional_role != "None")
+# Based on the ratio observed with the radar plot
+# filter(grepl("Language|FPN|DMN", `1st_network`))
 
 data_box_sig <- Gender_RSN_prop_final %>%
   group_by(`1st_network`, Functional_role) %>%
-  rstatix::t_test(freq ~ Gender) %>% 
+  rstatix::t_test(freq ~ Gender) %>%
   adjust_pvalue(method = "fdr") %>%
   add_significance("p.adj") %>%
   add_xy_position(x = "1st_network")
@@ -769,59 +774,59 @@ ggplot(Gender_RSN_prop_final, aes(x = `1st_network`, y = freq)) +
   facet_wrap(~Functional_role) +
   theme_pubr() +
   stat_pvalue_manual(data_box_sig,
-                     label = "p.adj.signif",
-                     tip.length = 0.01,
-                     hide.ns = TRUE
-  ) 
+    label = "p.adj.signif",
+    tip.length = 0.01,
+    hide.ns = TRUE
+  )
 
 
 # Interaction Gender*FuncRole*Community_structure
-# 
+#
 # interaction_male_FuncRole_community <- function(male, alpha) {
 #   # Retain only the regions yielded by hub detection procedure across the two genders
-#   
+#
 #   # Hub region specific to each subject yielded by hub detection procedure
 #   data_hub_selection_per_subject_gender <- rbindlist(Hub_selection_gender)
-#   
-#   data_gender_final_male <- merge(data_hub_selection_per_subject_gender, data_gender_1_helper_vector %>% 
+#
+#   data_gender_final_male <- merge(data_hub_selection_per_subject_gender, data_gender_1_helper_vector %>%
 #                                dplyr::select(helper_vector, Subj_ID, Gender, Region),
 #                              by = c("helper_vector", "Region")
 #   ) %>% filter(Gender == "M")
-#   
-#   Radar_hub_RSN <- data_gender_final_male %>% 
+#
+#   Radar_hub_RSN <- data_gender_final_male %>%
 #     group_by(Gender, Consensus_vector_male) %>%
 #     summarise(n = n()) %>%
 #     mutate(freq = n / sum(n)) %>%
-#     dplyr::select(-n) %>% 
-#     spread(Consensus_vector_male, freq) %>% 
-#     remove_rownames() %>% column_to_rownames("Gender") %>% 
+#     dplyr::select(-n) %>%
+#     spread(Consensus_vector_male, freq) %>%
+#     remove_rownames() %>% column_to_rownames("Gender") %>%
 #     mutate_at(vars(everything()), funs(. * 100))
-#   
+#
 #   radarplotting_overlap(Radar_hub_RSN, 100, 0, 1, 1,
 #                         alpha = 0.05, label_size = 1,
 #                         title_fill = "Distribution of hubs regions across RSNs",
 #                         palette = RColorBrewer::brewer.pal(8, "Dark2")
 #   )
-#   
+#
 #   legend(
 #     x = "bottomleft", title = "Gender",
 #     legend = rownames(Radar_hub_RSN), horiz = TRUE,
 #     bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
 #     text.col = "black", cex = 1, pt.cex = 2
 #   )
-#   
+#
 #   delta_proportion_a <- data_gender_final_male %>%
 #     group_by(Consensus_vector_male, Gender, Hub_consensus_gender) %>%
 #     summarise(n = n()) %>%
-#     mutate(freq = n / sum(n)) %>% 
+#     mutate(freq = n / sum(n)) %>%
 #     # Make sure comparisons with missing functional roles can be achieved
 #     spread(Hub_consensus_gender, freq) %>%
 #     dplyr::select(-n) %>%
-#     mutate_all(., ~ replace(., is.na(.), 0)) %>% 
+#     mutate_all(., ~ replace(., is.na(.), 0)) %>%
 #     group_by(Consensus_vector_male, Gender) %>%
-#     summarize_at(vars(Connector:Satellite), sum) %>% 
-#     pivot_longer(cols = !c("Consensus_vector_male", "Gender"), names_to = "Hub_consensus_gender", values_to = "freq") 
-#   
+#     summarize_at(vars(Connector:Satellite), sum) %>%
+#     pivot_longer(cols = !c("Consensus_vector_male", "Gender"), names_to = "Hub_consensus_gender", values_to = "freq")
+#
 #   delta_proportion_b <- data_gender_final_male %>%
 #     group_by(Consensus_vector_male, Gender, Bridgeness) %>%
 #     summarise(n = n()) %>%
@@ -833,44 +838,44 @@ ggplot(Gender_RSN_prop_final, aes(x = `1st_network`, y = freq)) +
 #     group_by(Consensus_vector_male, Gender) %>%
 #     summarize_at(vars(Global_Bridge, Local_Bridge, Super_Bridge), sum) %>%
 #     pivot_longer(cols = !c("Consensus_vector_male", "Gender"), names_to = "Bridgeness", values_to = "freq")
-#   
+#
 #   Radar_functional_role_RSN_delta <-
 #     delta_proportion_a %>%
 #     dplyr::select(Consensus_vector_male, Hub_consensus_gender, freq) %>%
-#     subset(Hub_consensus_gender != "None") %>% 
+#     subset(Hub_consensus_gender != "None") %>%
 #     spread(Consensus_vector_male, freq) %>%
 #     remove_rownames() %>%
-#     column_to_rownames(var = "Hub_consensus_gender") %>% 
+#     column_to_rownames(var = "Hub_consensus_gender") %>%
 #     mutate_at(vars(everything()), funs(. * 100))
-#   
+#
 #   radarplotting_overlap(Radar_functional_role_RSN_delta, 50, 0, 1, 1,
 #                         alpha = alpha, label_size = 1,
 #                         title_fill = "Distribution of functional roles across communities",
 #                         palette = RColorBrewer::brewer.pal(8, "Dark2")
 #   )
-#   
+#
 #   legend(
 #     x = "topright",
 #     legend = rownames(Radar_functional_role_RSN_delta), horiz = TRUE,
 #     bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
 #     text.col = "black", cex = 1, pt.cex = 2
 #   )
-#   
+#
 #   Radar_functional_role_RSN_delta <-
 #     delta_proportion_b %>%
 #     dplyr::select(Consensus_vector_male, Bridgeness, freq) %>%
-#     subset(Bridgeness != "Not_a_Bridge") %>% 
+#     subset(Bridgeness != "Not_a_Bridge") %>%
 #     spread(Consensus_vector_male, freq) %>%
 #     remove_rownames() %>%
-#     column_to_rownames(var = "Bridgeness") %>% 
+#     column_to_rownames(var = "Bridgeness") %>%
 #     mutate_at(vars(everything()), funs(. * 100))
-#   
+#
 #   radarplotting_overlap(Radar_functional_role_RSN_delta, 50, 0, 1, 1,
 #                         alpha = alpha, label_size = 1,
 #                         title_fill = "Distribution of functional roles across communities",
 #                         palette = RColorBrewer::brewer.pal(8, "Dark2")
 #   )
-#   
+#
 #   legend(
 #     x = "topright",
 #     legend = rownames(Radar_functional_role_RSN_delta), horiz = TRUE,
@@ -878,54 +883,54 @@ ggplot(Gender_RSN_prop_final, aes(x = `1st_network`, y = freq)) +
 #     text.col = "black", cex = 1, pt.cex = 2
 #   )
 # }
-# 
+#
 # interaction_male_FuncRole_community("M", 0.2)
-# 
+#
 # interaction_female_FuncRole_community <- function(female, alpha) {
 #   # Retain only the regions yielded by hub detection procedure across the two genders
-#   
+#
 #   # Hub region specific to each subject yielded by hub detection procedure
 #   data_hub_selection_per_subject_gender <- rbindlist(Hub_selection_gender)
-#   
-#   data_gender_final_female <- merge(data_hub_selection_per_subject_gender, data_gender_1_helper_vector %>% 
+#
+#   data_gender_final_female <- merge(data_hub_selection_per_subject_gender, data_gender_1_helper_vector %>%
 #                                     dplyr::select(helper_vector, Subj_ID, Gender, Region),
 #                                   by = c("helper_vector", "Region")
 #   ) %>% filter(Gender == "M")
-#   
-#   Radar_hub_RSN <- data_gender_final_female %>% 
+#
+#   Radar_hub_RSN <- data_gender_final_female %>%
 #     group_by(Gender, Consensus_vector_female) %>%
 #     summarise(n = n()) %>%
 #     mutate(freq = n / sum(n)) %>%
-#     dplyr::select(-n) %>% 
-#     spread(Consensus_vector_female, freq) %>% 
-#     remove_rownames() %>% column_to_rownames("Gender") %>% 
+#     dplyr::select(-n) %>%
+#     spread(Consensus_vector_female, freq) %>%
+#     remove_rownames() %>% column_to_rownames("Gender") %>%
 #     mutate_at(vars(everything()), funs(. * 100))
-#   
+#
 #   radarplotting_overlap(Radar_hub_RSN, 100, 0, 1, 1,
 #                         alpha = 0.05, label_size = 1,
 #                         title_fill = "Distribution of hubs regions across RSNs",
 #                         palette = RColorBrewer::brewer.pal(8, "Dark2")
 #   )
-#   
+#
 #   legend(
 #     x = "bottomleft", title = "Gender",
 #     legend = rownames(Radar_hub_RSN), horiz = TRUE,
 #     bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
 #     text.col = "black", cex = 1, pt.cex = 2
 #   )
-#   
+#
 #   delta_proportion_a <- data_gender_final_female %>%
 #     group_by(Consensus_vector_female, Gender, Hub_consensus_gender) %>%
 #     summarise(n = n()) %>%
-#     mutate(freq = n / sum(n)) %>% 
+#     mutate(freq = n / sum(n)) %>%
 #     # Make sure comparisons with missing functional roles can be achieved
 #     spread(Hub_consensus_gender, freq) %>%
 #     dplyr::select(-n) %>%
-#     mutate_all(., ~ replace(., is.na(.), 0)) %>% 
+#     mutate_all(., ~ replace(., is.na(.), 0)) %>%
 #     group_by(Consensus_vector_female, Gender) %>%
-#     summarize_at(vars(Connector:Satellite), sum) %>% 
-#     pivot_longer(cols = !c("Consensus_vector_female", "Gender"), names_to = "Hub_consensus_gender", values_to = "freq") 
-#   
+#     summarize_at(vars(Connector:Satellite), sum) %>%
+#     pivot_longer(cols = !c("Consensus_vector_female", "Gender"), names_to = "Hub_consensus_gender", values_to = "freq")
+#
 #   delta_proportion_b <- data_gender_final_female %>%
 #     group_by(Consensus_vector_female, Gender, Bridgeness) %>%
 #     summarise(n = n()) %>%
@@ -937,44 +942,44 @@ ggplot(Gender_RSN_prop_final, aes(x = `1st_network`, y = freq)) +
 #     group_by(Consensus_vector_female, Gender) %>%
 #     summarize_at(vars(Global_Bridge, Local_Bridge, Super_Bridge), sum) %>%
 #     pivot_longer(cols = !c("Consensus_vector_female", "Gender"), names_to = "Bridgeness", values_to = "freq")
-#   
+#
 #   Radar_functional_role_RSN_delta <-
 #     delta_proportion_a %>%
 #     dplyr::select(Consensus_vector_female, Hub_consensus_gender, freq) %>%
-#     subset(Hub_consensus_gender != "None") %>% 
+#     subset(Hub_consensus_gender != "None") %>%
 #     spread(Consensus_vector_female, freq) %>%
 #     remove_rownames() %>%
-#     column_to_rownames(var = "Hub_consensus_gender") %>% 
+#     column_to_rownames(var = "Hub_consensus_gender") %>%
 #     mutate_at(vars(everything()), funs(. * 100))
-#   
+#
 #   radarplotting_overlap(Radar_functional_role_RSN_delta, 50, 0, 1, 1,
 #                         alpha = alpha, label_size = 1,
 #                         title_fill = "Distribution of functional roles across communities",
 #                         palette = RColorBrewer::brewer.pal(8, "Dark2")
 #   )
-#   
+#
 #   legend(
 #     x = "topright",
 #     legend = rownames(Radar_functional_role_RSN_delta), horiz = TRUE,
 #     bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
 #     text.col = "black", cex = 1, pt.cex = 2
 #   )
-#   
+#
 #   Radar_functional_role_RSN_delta <-
 #     delta_proportion_b %>%
 #     dplyr::select(Consensus_vector_female, Bridgeness, freq) %>%
-#     subset(Bridgeness != "Not_a_Bridge") %>% 
+#     subset(Bridgeness != "Not_a_Bridge") %>%
 #     spread(Consensus_vector_female, freq) %>%
 #     remove_rownames() %>%
-#     column_to_rownames(var = "Bridgeness") %>% 
+#     column_to_rownames(var = "Bridgeness") %>%
 #     mutate_at(vars(everything()), funs(. * 100))
-#   
+#
 #   radarplotting_overlap(Radar_functional_role_RSN_delta, 50, 0, 1, 1,
 #                         alpha = alpha, label_size = 1,
 #                         title_fill = "Distribution of functional roles across communities",
 #                         palette = RColorBrewer::brewer.pal(8, "Dark2")
 #   )
-#   
+#
 #   legend(
 #     x = "topright",
 #     legend = rownames(Radar_functional_role_RSN_delta), horiz = TRUE,
@@ -982,5 +987,5 @@ ggplot(Gender_RSN_prop_final, aes(x = `1st_network`, y = freq)) +
 #     text.col = "black", cex = 1, pt.cex = 2
 #   )
 # }
-# 
+#
 # interaction_female_FuncRole_community("F", 0.2)

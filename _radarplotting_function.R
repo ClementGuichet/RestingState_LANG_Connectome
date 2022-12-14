@@ -7,7 +7,7 @@ library(RColorBrewer)
 # rows = facet grid different radar plots
 # cols = labels within each radar plot
 # This function can handle multiple radar plotting with a different set of labels for each radar plot
-# 
+#
 # Currently allowing 12 colors at once
 
 radarplotting <- function(dataframe, max, min, mfrow_x, mfrow_y, inverse_grad = FALSE, palette, alpha, label_size) {
