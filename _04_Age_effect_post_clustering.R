@@ -145,14 +145,6 @@ ggdotchart(
   rotate = TRUE, legend = "none"
 )
 
-cor <- cor.test(data_post_clustering$Global_Bridge, data_post_clustering$Super_Bridge)
-# Creating the plot
-plot(data_post_clustering$Super_Bridge, data_post_clustering$Global_Bridge, pch = 19, col = "lightblue")
-# Regression line
-abline(lm(data_post_clustering$Global_Bridge ~ data_post_clustering$Super_Bridge), col = "red", lwd = 3)
-# Pearson correlation
-text(paste0("Correlation between Super & Global Bridge: ", round(cor$estimate, 2), "****"), x = 50, y = 30)
-
 ################################################################################
 # Topologico-functional profile across clusters  -------------------------------
 ################################################################################
@@ -217,6 +209,31 @@ legend(
   bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
   text.col = "black", cex = 1, pt.cex = 2
 )
+
+# Distribution of hubs across communities for each cluster for the individual hubs ----
+
+Radar_hub_community <- tmp_cluster_final %>% 
+  group_by(cluster, Consensus_vector_0.15) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>%
+  dplyr::select(-n) %>% 
+  spread(Consensus_vector_0.15, freq) %>% 
+  remove_rownames() %>% column_to_rownames("cluster") %>% 
+  mutate_at(vars(everything()), funs(. * 100))
+
+radarplotting_overlap(Radar_hub_community, 50, 0, 1, 1,
+                      alpha = 0.05, label_size = 1,
+                      title_fill = "Distribution of hubs regions across communities",
+                      palette = RColorBrewer::brewer.pal(8, "Dark2")
+)
+
+legend(
+  x = "topright", title = "Median age of each cluster\n Based on Ward Hierarchichal clustering (FWER corrected)\n (Kimes et al., 2017)",
+  legend = rownames(Radar_hub_community), horiz = TRUE,
+  bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
+  text.col = "black", cex = 1, pt.cex = 2
+)
+
 
 
 # What are the hubs that are most consistently assigned the same functional role across subjects? ----

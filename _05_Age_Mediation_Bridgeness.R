@@ -14,6 +14,15 @@ source("_04_Age_effect_post_clustering.R")
 # Reconfiguration of global into super bridges with age ---------------
 # Do the hub regions previously considered global bridge become super bridge later in life?
 
+cor <- cor.test(data_post_clustering$Global_Bridge, data_post_clustering$Super_Bridge)
+# Creating the plot
+plot(data_post_clustering$Super_Bridge, data_post_clustering$Global_Bridge, pch = 19, col = "lightblue")
+# Regression line
+abline(lm(data_post_clustering$Global_Bridge ~ data_post_clustering$Super_Bridge), col = "red", lwd = 3)
+# Pearson correlation
+text(paste0("Correlation between Super & Global Bridge: ", round(cor$estimate, 2), "****"), x = 50, y = 30)
+
+
 # Testing informatin flow reconfig
 data_reconfig <- data_functional_role %>%
   group_by(Subj_ID, CAB_NP_assign, Region, Age, Consensus_vector_0.15, LANG_Net_assign) %>%
