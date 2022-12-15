@@ -511,9 +511,9 @@ data_gender_F <- data_gender_0 %>%
 data_gender_1 <- bind_rows(data_gender_M, data_gender_F) %>% ungroup()
 
 
-# Apply hub detection at 20% and output the hubness profile --------------------
+# Apply hub detection at 20% and output the topologico-functional profile --------------------
 
-top <- 131 * 0.2
+top <- 131 * 0.3
 
 # Recreating a sequential vector to iterate through the list later
 # When filtering the dataframe for each subject, we must subset the rows corresponding to the current subject which may differ from
@@ -731,6 +731,13 @@ interaction_gender_FuncRole_RSN("M", "F", 0.2)
 ################################################################################
 # For each RSN, is there a difference in proportion of each functional role between genders?
 
+boxplot_gender_sig_interaction_RSN <- function(gender) {
+  data_hub_selection_per_subject_gender <- rbindlist(Hub_selection_gender)
+
+data_gender_final <- merge(data_hub_selection_per_subject_gender, data_gender_1_helper_vector %>%
+                             dplyr::select(helper_vector, Subj_ID, Gender, Region),
+                           by = c("helper_vector", "Region")
+)
 Gender_RSN_prop_1 <- data_gender_final %>%
   group_by(`1st_network`, Subj_ID, Gender, Hub_consensus_gender) %>%
   summarise(n = n()) %>%
@@ -778,7 +785,8 @@ ggplot(Gender_RSN_prop_final, aes(x = `1st_network`, y = freq)) +
     tip.length = 0.01,
     hide.ns = TRUE
   )
-
+}
+boxplot_gender_sig_interaction_RSN(gender)
 
 # Interaction Gender*FuncRole*Community_structure
 #
