@@ -60,9 +60,11 @@ data_reconfig_mediation <- tmp_cluster_final %>%
   ungroup() %>%
   mutate(reconfig = ifelse(cluster == "25" & Bridgeness == "Global_Bridge", "GB_25",
     ifelse(cluster == "25" & Bridgeness == "Super_Bridge", "SP_25",
-      ifelse(cluster == "50" & Bridgeness == "Super_Bridge", "SP_50",
-        ifelse(cluster == "25" & Bridgeness == "Not_a_Bridge", "NB_25",
-          ifelse(cluster == "50" & Bridgeness == "Local_Bridge", "LB_50", 0)
+      ifelse(cluster == "25" & Bridgeness == "Local_Bridge", "LB_25",
+        ifelse(cluster == "50" & Bridgeness == "Super_Bridge", "SP_50",
+          ifelse(cluster == "25" & Bridgeness == "Not_a_Bridge", "NB_25",
+            ifelse(cluster == "50" & Bridgeness == "Local_Bridge", "LB_50", 0)
+          )
         )
       )
     )
@@ -71,25 +73,24 @@ data_reconfig_mediation <- tmp_cluster_final %>%
   ungroup() %>%
   dplyr::select(Region, freq, reconfig) %>%
   spread(reconfig, freq) %>%
-  mutate_all(., ~ replace(., is.na(.), 0))
+  mutate_all(., ~ replace(., is.na(.), 0)) %>%
+  mutate(SP_diff = SP_50 - SP_25) %>%
+  mutate(LB_diff = LB_50 - LB_25)
 
-mediation <- cbind(data_reconfig_mediation, zFlow = data_reconfig_mediation_zFlow$zFlow_diff) %>%
-  dplyr::select(-Region) %>%
-  scale(.)
+mediation <- cbind(data_reconfig_mediation, zFlow = data_reconfig_mediation_zFlow$zFlow_diff)
 
 
 mod <- "
-  zFlow ~ ind1*GB_25
-  # + ind2*NB_25
-  SP_50 ~ direct1*GB_25 + ind3*zFlow
-  # LB_50 ~ direct2*NB_25 + ind4*zFlow
+  zFlow ~ ind1*GB_25 + ind2*NB_25
+  SP_diff ~ direct1*GB_25 + ind3*zFlow
+  LB_diff ~ direct2*NB_25 + ind4*zFlow
   dir_up := direct1
-  # dir_down := direct2
+  dir_down := direct2
   mediation_up := ind1*ind3
-  # mediation_down := ind2*ind4
+  mediation_down := ind2*ind4
   tot_up := (ind1*ind3) + direct1
-  # tot_down := (ind2 + ind4) + direct2
-  # total := (ind1*ind3) + direct1 + (ind2 + ind4) + direct2
+  tot_down := (ind2 + ind4) + direct2
+  total := (ind1*ind3) + direct1 + (ind2 + ind4) + direct2
 "
 
 fit <- sem(mod, data = mediation)
