@@ -1,5 +1,5 @@
 ##########################################################################################
-# Script for the cross-sectional mediation analysis with SEM
+# Script for the cross-sectional mediation analysis with lavaan
 
 # Written by CG
 # 14-12-2022
@@ -45,6 +45,29 @@ cor.test(data_reconfig$zBT, data_reconfig$Age, method = "kendall")
 
 # Mediation
 
+a <- "25"
+b <- "50"
+
+# Final dataframe with only the subjects of chosen clusters, their hub regions and the RSNs -----
+# 1a
+# Retain only the rows specific of the two clusters
+tmp_cluster_0 <- data_post_clustering %>% subset(cluster == a | cluster == b)
+# Get the associated Resting-state networks
+tmp_cluster_1 <- filter(data_functional_role, Subj_ID %in% tmp_cluster_0$Subj_ID)
+# 2a
+# Hub region specific to each subject yielded by hub detection procedure
+data_hub_selection_per_subject <- rbindlist(Hub_selection)
+# Select the subjects from the clusters
+data_hub_selection_cluster <- filter(
+  data_hub_selection_per_subject,
+  Subj_ID %in% tmp_cluster_1$Subj_ID
+)
+# Final dataframe with only the subjects of chosen clusters, their hub regions and the RSNs -----
+tmp_cluster_final <- merge(data_hub_selection_cluster, tmp_cluster_0 %>%
+                             dplyr::select(Subj_ID, cluster),
+                           by = "Subj_ID"
+)
+
 data_reconfig_mediation_zFlow <- tmp_cluster_final %>%
   filter(cluster == "25" | cluster == "50") %>%
   group_by(Region, cluster) %>%
@@ -79,18 +102,18 @@ data_reconfig_mediation <- tmp_cluster_final %>%
 
 mediation <- cbind(data_reconfig_mediation, zFlow = data_reconfig_mediation_zFlow$zFlow_diff)
 
-
 mod <- "
-  zFlow ~ ind1*GB_25 + ind2*NB_25
+  zFlow ~ ind1*GB_25 
+  # + ind2*NB_25
   SP_diff ~ direct1*GB_25 + ind3*zFlow
-  LB_diff ~ direct2*NB_25 + ind4*zFlow
+  # LB_diff ~ direct2*NB_25 + ind4*zFlow
   dir_up := direct1
-  dir_down := direct2
+  # dir_down := direct2
   mediation_up := ind1*ind3
-  mediation_down := ind2*ind4
+  # mediation_down := ind2*ind4
   tot_up := (ind1*ind3) + direct1
-  tot_down := (ind2 + ind4) + direct2
-  total := (ind1*ind3) + direct1 + (ind2 + ind4) + direct2
+  # tot_down := (ind2 + ind4) + direct2
+  # total := (ind1*ind3) + direct1 + (ind2 + ind4) + direct2
 "
 
 fit <- sem(mod, data = mediation)

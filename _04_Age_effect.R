@@ -69,7 +69,7 @@ ComplexHeatmap::Heatmap(as.matrix(correlation_DC_age %>% subset(p_value <= 0.05)
 ################################################################################
 # Method ~ Detect top % regions for each metric ------------------------------
 
-# Hubness profile with hub detection at the individual level -------------------
+# Topologico-functional profile with hub detection at the individual level -------------------
 
 top <- 131 * 0.2
 
