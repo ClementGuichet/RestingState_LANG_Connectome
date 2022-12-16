@@ -257,7 +257,7 @@ plot_functional_role_Region <- data_hub_selection_per_subject %>%
   arrange(Region, desc(freq))
 
 # Select only the top n regions to be displayed
-top <- 5
+top <- 10
 
 Radar_functional_role_Region <- plot_functional_role_Region %>%
   dplyr::select(Hub_consensus, freq) %>%
@@ -276,16 +276,14 @@ radarplotting(Radar_functional_role_Region, 100, 20, 2, 2,
   palette = RColorBrewer::brewer.pal(8, "Dark2")
 )
 
-plot_functional_role_Region <- data_hub_selection_per_subject %>%
+plot_functional_role_Region_bis <- data_hub_selection_per_subject %>%
   group_by(Region, Bridgeness) %>%
   summarise(n = n()) %>%
   mutate(freq = n / sum(n)) %>%
   arrange(Region, desc(freq))
 
-# Select only the top n regions to be displayed
-top <- 5
 
-Radar_functional_role_Region <- plot_functional_role_Region %>%
+Radar_functional_role_Region_bis <- plot_functional_role_Region_bis %>%
   dplyr::select(Bridgeness, freq) %>%
   ungroup() %>%
   group_by(Bridgeness, .add = TRUE) %>%
@@ -297,7 +295,7 @@ Radar_functional_role_Region <- plot_functional_role_Region %>%
   column_to_rownames(var = "Bridgeness") %>%
   mutate_at(vars(everything()), funs(. * 100))
 
-radarplotting(Radar_functional_role_Region, 100, 20, 2, 2,
+radarplotting(Radar_functional_role_Region_bis, 100, 20, 2, 2,
   alpha = 0.3, label_size = 1,
   palette = RColorBrewer::brewer.pal(8, "Dark2")
 )
@@ -386,6 +384,11 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
 
   # First averaging per subject then per clusters because grand mean is not equal to mean of means 
   # with unequal sample size i.e., subjects have a different total number of hubs
+  # 
+  # Furthermore, we compute the median instead of the mean because it is:
+  # less sensitive to potential outliers within each RSN
+  # e.g., if 75% of subjects have no connector hubs in DMN and 25% have 2, then the distribution of heavily skewed
+  # in those cases the median does a better job of summarizing the data
   delta_proportion_a <- tmp_cluster_final %>%
     group_by(`1st_network`, Subj_ID, cluster, Hub_consensus) %>%
     summarise(n = n()) %>%
@@ -397,14 +400,14 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
     group_by(`1st_network`, Subj_ID, cluster) %>%
     summarize_at(vars(Connector:Satellite), sum) %>% 
     group_by(`1st_network`, cluster) %>%
-    summarize_at(vars(Connector:Satellite), mean) %>% 
+    summarize_at(vars(Connector:Satellite), median) %>% 
     pivot_longer(cols = !c("1st_network", "cluster"), names_to = "Hub_consensus", values_to = "freq") %>%
     # Compute the difference in proportion of a given functional role within each RSN
     group_by(`1st_network`, Hub_consensus) %>%
     mutate(delta_freq = freq / lag(freq)) %>%
     dplyr::select(-cluster) %>%
     na.omit()
-
+ 
   delta_proportion_b <- tmp_cluster_final %>%
     group_by(`1st_network`, Subj_ID, cluster, Bridgeness) %>%
     summarise(n = n()) %>%
@@ -416,11 +419,11 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
     group_by(`1st_network`, Subj_ID, cluster) %>%
     summarize_at(vars(Global_Bridge, Local_Bridge, Super_Bridge), sum) %>% 
     group_by(`1st_network`, cluster) %>%
-    summarize_at(vars(Global_Bridge, Local_Bridge, Super_Bridge), mean) %>%
+    summarize_at(vars(Global_Bridge, Local_Bridge, Super_Bridge), median) %>%
     pivot_longer(cols = !c("1st_network", "cluster"), names_to = "Bridgeness", values_to = "freq") %>%
     # Compute the difference in proportion of a given functional role within each RSN
     group_by(`1st_network`, Bridgeness) %>%
-    mutate(delta_freq = freq / lag(freq)) %>%
+    mutate(delta_freq = freq / lag(freq)) %>% 
     dplyr::select(-cluster) %>%
     na.omit()
 
@@ -429,7 +432,7 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
     dplyr::select(`1st_network`, Hub_consensus, delta_freq) %>%
     subset(Hub_consensus != "None") %>%
     mutate(`1st_network` = ifelse(delta_freq == "Inf" | delta_freq == 0, paste0(`1st_network`, "*"), `1st_network`)) %>%
-    mutate(delta_freq = ifelse(delta_freq == "Inf", 1, delta_freq)) %>%
+    mutate(delta_freq = ifelse(delta_freq == "Inf", 4, delta_freq)) %>%
     spread(`1st_network`, delta_freq) %>%
     remove_rownames() %>%
     column_to_rownames(var = "Hub_consensus")
@@ -437,7 +440,7 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
 
   radarplotting_overlap(Radar_functional_role_RSN_delta, max, min, 1, 1,
     alpha = alpha, label_size = 1,
-    title_fill = paste("Ratio of the proportion of functional roles between cluster", cluster1, "and", cluster2, "\n A positive ratio means", cluster2, "has x times more {Connector} hubs within the RSN"),
+    title_fill = paste("Ratio of", cluster1, "and", cluster2, "'s average median proportion of functional roles within each RSN\n A positive ratio means the average median proportion of {Functional role} hubs is x fold that of", cluster1, "within the RSN"),
     palette = RColorBrewer::brewer.pal(8, "Dark2")
   )
 
@@ -452,14 +455,14 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
     dplyr::select(`1st_network`, Bridgeness, delta_freq) %>%
     subset(Bridgeness != "None") %>%
     mutate(`1st_network` = ifelse(delta_freq == "Inf" | delta_freq == 0, paste0(`1st_network`, "*"), `1st_network`)) %>%
-    mutate(delta_freq = ifelse(delta_freq == "Inf", 1, delta_freq)) %>%
+    mutate(delta_freq = ifelse(delta_freq == "Inf", 4, delta_freq)) %>%
     spread(`1st_network`, delta_freq) %>%
     remove_rownames() %>%
     column_to_rownames(var = "Bridgeness")
 
   radarplotting_overlap(Radar_functional_role_RSN_delta, max2, min2, 1, 1,
     alpha = alpha, label_size = 1,
-    title_fill = paste("Ratio of the proportion of functional roles between cluster", cluster1, "and", cluster2, "\n A positive ratio means", cluster2, "has x times more {Global Bridge} hubs within the RSN"),
+    title_fill = paste("Ratio of", cluster1, "and", cluster2, "'s average median proportion of functional roles within each RSN\n A positive ratio means the average median proportion of {Functional role} hubs is x fold that of", cluster1, "within the RSN"),
     palette = RColorBrewer::brewer.pal(8, "Dark2")
   )
 
@@ -470,7 +473,7 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
     text.col = "black", cex = 1, pt.cex = 2
   )
 }
-interaction_Age_FuncRole_RSN("25", "50", 5, 0, 10, -2, 0.1)
+interaction_Age_FuncRole_RSN("25", "50", 4, 0, 4, 0, 0.1)
 
 # For each RSN, is there a difference in proportion of each functional role between clusters?
 boxplot_sig_interaction_RSN <- function(cluster1, cluster2) {
@@ -585,7 +588,7 @@ interaction_Age_FuncRole_community <- function(cluster1, cluster2, max, min, max
     mutate(freq = n / sum(n)) %>%
     dplyr::select(-n) %>% 
     group_by(cluster, Consensus_vector_0.15) %>%
-    summarise_at(vars(freq), mean) %>%
+    summarise_at(vars(freq), mean) %>% 
     spread(Consensus_vector_0.15, freq) %>%
     remove_rownames() %>%
     column_to_rownames("cluster") %>%
@@ -615,7 +618,7 @@ interaction_Age_FuncRole_community <- function(cluster1, cluster2, max, min, max
     group_by(Consensus_vector_0.15, Subj_ID, cluster) %>%
     summarize_at(vars(Connector:Satellite), sum) %>% 
     group_by(Consensus_vector_0.15, cluster) %>%
-    summarize_at(vars(Connector:Satellite), mean) %>%
+    summarize_at(vars(Connector:Satellite), median) %>%
     pivot_longer(cols = !c("Consensus_vector_0.15", "cluster"), names_to = "Hub_consensus", values_to = "freq") %>%
     # Compute the difference in proportion of a given functional role within each RSN
     group_by(Consensus_vector_0.15, Hub_consensus) %>%
@@ -634,7 +637,7 @@ interaction_Age_FuncRole_community <- function(cluster1, cluster2, max, min, max
     group_by(Consensus_vector_0.15, cluster) %>%
     summarize_at(vars(Global_Bridge, Local_Bridge, Super_Bridge), sum) %>%
     group_by(Consensus_vector_0.15, cluster) %>%
-    summarize_at(vars(Global_Bridge, Local_Bridge, Super_Bridge), mean) %>%
+    summarize_at(vars(Global_Bridge, Local_Bridge, Super_Bridge), median) %>%
     pivot_longer(cols = !c("Consensus_vector_0.15", "cluster"), names_to = "Bridgeness", values_to = "freq") %>%
     # Compute the difference in proportion of a given functional role within each RSN
     group_by(Consensus_vector_0.15, Bridgeness) %>%
@@ -642,7 +645,7 @@ interaction_Age_FuncRole_community <- function(cluster1, cluster2, max, min, max
     dplyr::select(-cluster) %>%
     na.omit()
 
-  Radar_functional_role_RSN_delta <-
+  Radar_functional_role_community_delta <-
     delta_proportion_a %>%
     dplyr::select(Consensus_vector_0.15, Hub_consensus, delta_freq) %>%
     subset(Hub_consensus != "None") %>%
@@ -653,19 +656,19 @@ interaction_Age_FuncRole_community <- function(cluster1, cluster2, max, min, max
     column_to_rownames(var = "Hub_consensus")
 
 
-  radarplotting_overlap(Radar_functional_role_RSN_delta, max, min, 1, 1,
+  radarplotting_overlap(Radar_functional_role_community_delta, max, min, 1, 1,
     alpha = alpha, label_size = 1,
-    title_fill = paste("Ratio of the proportion of functional roles between cluster", cluster1, "and", cluster2, "\n A positive ratio means", cluster2, "has x times more {Connector} hubs within the community"),
+    title_fill = paste("Ratio of", cluster1, "and", cluster2, "'s average median proportion of functional roles within each RSN\n A positive ratio means the average median proportion of {Functional role} hubs is x fold that of", cluster1, "within the community"),
     palette = RColorBrewer::brewer.pal(8, "Dark2")
   )
 
   legend(
-    x = "bottomleft", legend = rownames(Radar_functional_role_RSN_delta), horiz = TRUE,
+    x = "bottomleft", legend = rownames(Radar_functional_role_community_delta), horiz = TRUE,
     bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
     text.col = "black", cex = 1, pt.cex = 2
   )
 
-  Radar_functional_role_RSN_delta <-
+  Radar_functional_role_community_delta <-
     delta_proportion_b %>%
     dplyr::select(Consensus_vector_0.15, Bridgeness, delta_freq) %>%
     subset(Bridgeness != "None") %>%
@@ -675,20 +678,20 @@ interaction_Age_FuncRole_community <- function(cluster1, cluster2, max, min, max
     remove_rownames() %>%
     column_to_rownames(var = "Bridgeness")
 
-  radarplotting_overlap(Radar_functional_role_RSN_delta, max2, min2, 1, 1,
+  radarplotting_overlap(Radar_functional_role_community_delta, max2, min2, 1, 1,
     alpha = alpha, label_size = 1,
-    title_fill = paste("Ratio of the proportion of functional roles between cluster", cluster1, "and", cluster2, "\n A positive ratio means", cluster2, "has x times more {Global Bridge} hubs within the community"),
+    title_fill = paste("Ratio of", cluster1, "and", cluster2, "'s average median proportion of functional roles within each RSN\n A positive ratio means the average median proportion of {Functional role} hubs is x fold that of", cluster1, "within the community"),
     palette = RColorBrewer::brewer.pal(8, "Dark2")
   )
 
   legend(
     x = "bottomleft", title = "* indicates there were no Global Bridge hubs in VMM for young subjects",
-    legend = rownames(Radar_functional_role_RSN_delta), horiz = TRUE,
+    legend = rownames(Radar_functional_role_community_delta), horiz = TRUE,
     bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
     text.col = "black", cex = 1, pt.cex = 2
   )
 }
-interaction_Age_FuncRole_community("25", "50", 4, 0, 4, 0, 0.1)
+interaction_Age_FuncRole_community("25", "50", 4, 0, 5, 0, 0.1)
 
 # For each community, is there a difference in proportion of each functional role between clusters?
 boxplot_sig_interaction_community <- function(cluster1, cluster2) {
@@ -747,12 +750,10 @@ boxplot_sig_interaction_community <- function(cluster1, cluster2) {
   Age_RSN_prop_final <- bind_rows(Age_RSN_prop_1, Age_RSN_prop_2) %>%
     mutate(Functional_role = ifelse(is.na(Hub_consensus) == TRUE, Bridgeness, Hub_consensus)) %>%
     subset(Functional_role != "None")
-  # Based on the ratio observed with the radar plot
-  # filter(grepl("Auditory|Language|FPN|DMN|PMM", Consensus_vector_0.15))
 
-  data_box_sig_RSN <- Age_RSN_prop_final %>%
+  data_box_sig_community <- Age_RSN_prop_final %>%
     group_by(Consensus_vector_0.15, Functional_role) %>%
-    rstatix::t_test(freq ~ cluster) %>%
+    rstatix::wilcox_test(freq ~ cluster) %>%
     adjust_pvalue(method = "fdr") %>%
     add_significance("p.adj") %>%
     add_xy_position(x = "Consensus_vector_0.15")
@@ -762,7 +763,7 @@ boxplot_sig_interaction_community <- function(cluster1, cluster2) {
     scale_fill_brewer(palette = "Dark2") +
     facet_wrap(~Functional_role) +
     theme_pubr() +
-    stat_pvalue_manual(data_box_sig_RSN,
+    stat_pvalue_manual(data_box_sig_community,
       label = "p.adj.signif",
       tip.length = 0.01,
       hide.ns = TRUE
