@@ -9,9 +9,6 @@ library(RColorBrewer)
 library(rstatix)
 library(Rmisc)
 library(rgl)
-library(FactoMineR)
-library(factoextra)
-library(FactoInvestigate)
 library(fitdistrplus)
 library(sigclust2)
 
@@ -67,7 +64,6 @@ c <- gghistogram(data_post_clustering %>% subset(cluster == "50"),
 ) + theme_pubclean()
 
 Rmisc::multiplot(a, b, c)
-
 
 
 ################################################################################
@@ -193,11 +189,15 @@ tmp_cluster_final <- merge(data_hub_selection_cluster, data_post_clustering %>%
 by = "Subj_ID"
 )
 
+# First averaging per subject then per clusters because grand mean is not equal to mean of means 
+# with unequal sample size i.e., subjects have a different total number of hubs
 Radar_hub_RSN <- tmp_cluster_final %>%
-  group_by(cluster, `1st_network`) %>%
+  group_by(Subj_ID, cluster, `1st_network`) %>%
   summarise(n = n()) %>%
   mutate(freq = n / sum(n)) %>%
   dplyr::select(-n) %>%
+  group_by(cluster, `1st_network`) %>% 
+  summarize_at(vars(freq), mean) %>% 
   spread(`1st_network`, freq) %>%
   remove_rownames() %>%
   column_to_rownames("cluster") %>%
@@ -219,10 +219,12 @@ legend(
 # Distribution of hubs across communities for each cluster for the individual hubs ----
 
 Radar_hub_community <- tmp_cluster_final %>%
-  group_by(cluster, Consensus_vector_0.15) %>%
+  group_by(Subj_ID, cluster, Consensus_vector_0.15) %>%
   summarise(n = n()) %>%
   mutate(freq = n / sum(n)) %>%
   dplyr::select(-n) %>%
+  group_by(cluster, Consensus_vector_0.15) %>% 
+  summarize_at(vars(freq), mean) %>% 
   spread(Consensus_vector_0.15, freq) %>%
   remove_rownames() %>%
   column_to_rownames("cluster") %>%
@@ -358,10 +360,12 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
 
   # Distribution of hubs across RSNs for each cluster for the individual hubs
   Radar_hub_RSN <- tmp_cluster_final %>%
-    group_by(cluster, `1st_network`) %>%
+    group_by(Subj_ID, cluster, `1st_network`) %>%
     summarise(n = n()) %>%
     mutate(freq = n / sum(n)) %>%
     dplyr::select(-n) %>%
+    group_by(cluster, `1st_network`) %>% 
+    summarize_at(vars(freq), mean) %>% 
     spread(`1st_network`, freq) %>%
     remove_rownames() %>%
     column_to_rownames("cluster") %>%
@@ -380,16 +384,20 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
     text.col = "black", cex = 1, pt.cex = 2
   )
 
+  # First averaging per subject then per clusters because grand mean is not equal to mean of means 
+  # with unequal sample size i.e., subjects have a different total number of hubs
   delta_proportion_a <- tmp_cluster_final %>%
-    group_by(`1st_network`, cluster, Hub_consensus) %>%
+    group_by(`1st_network`, Subj_ID, cluster, Hub_consensus) %>%
     summarise(n = n()) %>%
     mutate(freq = n / sum(n)) %>%
     spread(Hub_consensus, freq) %>%
     dplyr::select(-n) %>%
     # Make sure comparisons with missing functional roles can be achieved
     mutate_all(., ~ replace(., is.na(.), 0)) %>%
+    group_by(`1st_network`, Subj_ID, cluster) %>%
+    summarize_at(vars(Connector:Satellite), sum) %>% 
     group_by(`1st_network`, cluster) %>%
-    summarize_at(vars(Connector:Satellite), sum) %>%
+    summarize_at(vars(Connector:Satellite), mean) %>% 
     pivot_longer(cols = !c("1st_network", "cluster"), names_to = "Hub_consensus", values_to = "freq") %>%
     # Compute the difference in proportion of a given functional role within each RSN
     group_by(`1st_network`, Hub_consensus) %>%
@@ -398,15 +406,17 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
     na.omit()
 
   delta_proportion_b <- tmp_cluster_final %>%
-    group_by(`1st_network`, cluster, Bridgeness) %>%
+    group_by(`1st_network`, Subj_ID, cluster, Bridgeness) %>%
     summarise(n = n()) %>%
     mutate(freq = n / sum(n)) %>%
     spread(Bridgeness, freq) %>%
     dplyr::select(-n) %>%
     # Make sure comparisons with missing functional roles can be achieved
     mutate_all(., ~ replace(., is.na(.), 0)) %>%
+    group_by(`1st_network`, Subj_ID, cluster) %>%
+    summarize_at(vars(Global_Bridge, Local_Bridge, Super_Bridge), sum) %>% 
     group_by(`1st_network`, cluster) %>%
-    summarize_at(vars(Global_Bridge, Local_Bridge, Super_Bridge), sum) %>%
+    summarize_at(vars(Global_Bridge, Local_Bridge, Super_Bridge), mean) %>%
     pivot_longer(cols = !c("1st_network", "cluster"), names_to = "Bridgeness", values_to = "freq") %>%
     # Compute the difference in proportion of a given functional role within each RSN
     group_by(`1st_network`, Bridgeness) %>%
@@ -460,7 +470,7 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
     text.col = "black", cex = 1, pt.cex = 2
   )
 }
-interaction_Age_FuncRole_RSN("25", "50", 4, 0, 6, -2, 0.1)
+interaction_Age_FuncRole_RSN("25", "50", 5, 0, 10, -2, 0.1)
 
 # For each RSN, is there a difference in proportion of each functional role between clusters?
 boxplot_sig_interaction_RSN <- function(cluster1, cluster2) {
@@ -570,10 +580,12 @@ interaction_Age_FuncRole_community <- function(cluster1, cluster2, max, min, max
 
   # Distribution of hubs across RSNs for each cluster for the individual hubs
   Radar_hub_RSN <- tmp_cluster_final %>%
-    group_by(cluster, Consensus_vector_0.15) %>%
+    group_by(Subj_ID, cluster, Consensus_vector_0.15) %>%
     summarise(n = n()) %>%
     mutate(freq = n / sum(n)) %>%
-    dplyr::select(-n) %>%
+    dplyr::select(-n) %>% 
+    group_by(cluster, Consensus_vector_0.15) %>%
+    summarise_at(vars(freq), mean) %>%
     spread(Consensus_vector_0.15, freq) %>%
     remove_rownames() %>%
     column_to_rownames("cluster") %>%
@@ -593,15 +605,17 @@ interaction_Age_FuncRole_community <- function(cluster1, cluster2, max, min, max
   )
 
   delta_proportion_a <- tmp_cluster_final %>%
-    group_by(Consensus_vector_0.15, cluster, Hub_consensus) %>%
+    group_by(Consensus_vector_0.15, Subj_ID, cluster, Hub_consensus) %>%
     summarise(n = n()) %>%
     mutate(freq = n / sum(n)) %>%
     spread(Hub_consensus, freq) %>%
     dplyr::select(-n) %>%
     # Make sure comparisons with missing functional roles can be achieved
     mutate_all(., ~ replace(., is.na(.), 0)) %>%
+    group_by(Consensus_vector_0.15, Subj_ID, cluster) %>%
+    summarize_at(vars(Connector:Satellite), sum) %>% 
     group_by(Consensus_vector_0.15, cluster) %>%
-    summarize_at(vars(Connector:Satellite), sum) %>%
+    summarize_at(vars(Connector:Satellite), mean) %>%
     pivot_longer(cols = !c("Consensus_vector_0.15", "cluster"), names_to = "Hub_consensus", values_to = "freq") %>%
     # Compute the difference in proportion of a given functional role within each RSN
     group_by(Consensus_vector_0.15, Hub_consensus) %>%
@@ -610,7 +624,7 @@ interaction_Age_FuncRole_community <- function(cluster1, cluster2, max, min, max
     na.omit()
 
   delta_proportion_b <- tmp_cluster_final %>%
-    group_by(Consensus_vector_0.15, cluster, Bridgeness) %>%
+    group_by(Consensus_vector_0.15, Subj_ID, cluster, Bridgeness) %>%
     summarise(n = n()) %>%
     mutate(freq = n / sum(n)) %>%
     spread(Bridgeness, freq) %>%
@@ -619,6 +633,8 @@ interaction_Age_FuncRole_community <- function(cluster1, cluster2, max, min, max
     mutate_all(., ~ replace(., is.na(.), 0)) %>%
     group_by(Consensus_vector_0.15, cluster) %>%
     summarize_at(vars(Global_Bridge, Local_Bridge, Super_Bridge), sum) %>%
+    group_by(Consensus_vector_0.15, cluster) %>%
+    summarize_at(vars(Global_Bridge, Local_Bridge, Super_Bridge), mean) %>%
     pivot_longer(cols = !c("Consensus_vector_0.15", "cluster"), names_to = "Bridgeness", values_to = "freq") %>%
     # Compute the difference in proportion of a given functional role within each RSN
     group_by(Consensus_vector_0.15, Bridgeness) %>%

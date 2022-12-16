@@ -11,7 +11,10 @@ library(Rmisc)
 library(fitdistrplus)
 library(sigclust2)
 library(ggpubr)
-
+library(cluster)
+library(FactoMineR)
+library(factoextra)
+library(FactoInvestigate)
 
 rm(list = ls())
 
