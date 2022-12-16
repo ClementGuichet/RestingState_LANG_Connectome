@@ -397,7 +397,7 @@ legend(
 
 
 ################################################################################
-# Hubness profile
+# Topological-functional profile
 ################################################################################
 
 # Normalize PC & Wz for each gender and merge it back into one dataframe -------
@@ -618,10 +618,12 @@ interaction_gender_FuncRole_RSN <- function(cluster1, cluster2, alpha) {
   )
 
   Radar_hub_RSN <- data_gender_final %>%
-    group_by(Gender, `1st_network`) %>%
+    group_by(Subj_ID, Gender, `1st_network`) %>%
     summarise(n = n()) %>%
     mutate(freq = n / sum(n)) %>%
     dplyr::select(-n) %>%
+    group_by(Gender, `1st_network`) %>% 
+    summarise_at(vars(freq), mean) %>% 
     spread(`1st_network`, freq) %>%
     remove_rownames() %>%
     column_to_rownames("Gender") %>%
@@ -641,15 +643,17 @@ interaction_gender_FuncRole_RSN <- function(cluster1, cluster2, alpha) {
   )
 
   delta_proportion_a <- data_gender_final %>%
-    group_by(`1st_network`, Gender, Hub_consensus_gender) %>%
+    group_by(`1st_network`, Subj_ID, Gender, Hub_consensus_gender) %>%
     summarise(n = n()) %>%
     mutate(freq = n / sum(n)) %>%
     # Make sure comparisons with missing functional roles can be achieved
     spread(Hub_consensus_gender, freq) %>%
     dplyr::select(-n) %>%
     mutate_all(., ~ replace(., is.na(.), 0)) %>%
-    group_by(`1st_network`, Gender) %>%
+    group_by(`1st_network`, Subj_ID, Gender) %>%
     summarize_at(vars(Connector:Satellite), sum) %>%
+    group_by(`1st_network`, Gender) %>%
+    summarize_at(vars(Connector:Satellite), mean) %>%
     pivot_longer(cols = !c("1st_network", "Gender"), names_to = "Hub_consensus_gender", values_to = "freq") %>%
     # Compute the difference in proportion of a given functional role within each RSN
     arrange(Gender) %>%
@@ -659,15 +663,17 @@ interaction_gender_FuncRole_RSN <- function(cluster1, cluster2, alpha) {
     na.omit()
 
   delta_proportion_b <- data_gender_final %>%
-    group_by(`1st_network`, Gender, Bridgeness) %>%
+    group_by(`1st_network`, Subj_ID, Gender, Bridgeness) %>%
     summarise(n = n()) %>%
     mutate(freq = n / sum(n)) %>%
     # Make sure comparisons with missing functional roles can be achieved
     spread(Bridgeness, freq) %>%
     dplyr::select(-n) %>%
     mutate_all(., ~ replace(., is.na(.), 0)) %>%
+    group_by(`1st_network`, Subj_ID, Gender) %>% 
+    summarise_at(vars(Global_Bridge, Local_Bridge, Super_Bridge), sum) %>% 
     group_by(`1st_network`, Gender) %>%
-    summarize_at(vars(Global_Bridge, Local_Bridge, Super_Bridge), sum) %>%
+    summarize_at(vars(Global_Bridge, Local_Bridge, Super_Bridge), mean) %>%
     pivot_longer(cols = !c("1st_network", "Gender"), names_to = "Bridgeness", values_to = "freq") %>%
     # Compute the difference in proportion of a given functional role within each RSN
     arrange(Gender) %>%
