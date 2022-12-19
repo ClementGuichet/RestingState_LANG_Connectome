@@ -68,6 +68,7 @@ data_bind_PC_Wz <- cbind(data_full_thresholded,
 )
 
 
+# Wz is mathematicaaly classified as zero when belonging to its own module
 
 data_functional_role <- data_bind_PC_Wz %>%
   # Normalizing at the connectomic level
@@ -76,7 +77,8 @@ data_functional_role <- data_bind_PC_Wz %>%
   mutate(zFlow = as.numeric(scale(Flow_coeff))) %>%
   mutate(Bridgeness = ifelse(zBT > 0 & zFlow < 0, "Global_Bridge",
     ifelse(zFlow > 0 & zBT < 0, "Local_Bridge",
-      ifelse(zBT > 0 & zFlow > 0, "Super_Bridge", "Not_a_Bridge")
+      ifelse(zBT > 0 & zFlow > 0, "Super_Bridge", 
+             ifelse(zBT < 0 & zFlow < 0, "Not_a_Bridge", 0))
     )
   )) %>%
   # Normalizing at the community level with the affiliation vector from consensus clustering
@@ -85,11 +87,10 @@ data_functional_role <- data_bind_PC_Wz %>%
   mutate(Hub_consensus = ifelse(zPC_cons > 0 & Within_module_z_cons > 0, "Connector",
     ifelse(zPC_cons > 0 & Within_module_z_cons < 0, "Satellite",
       ifelse(zPC_cons < 0 & Within_module_z_cons > 0, "Provincial",
-        ifelse(zPC_cons < 0 & Within_module_z_cons < 0, "Peripheral",
-          "None"
-        )
+        ifelse(zPC_cons < 0 & Within_module_z_cons < 0, "Peripheral", "Isolate")
       )
     )
   )) %>%
   arrange(Subj_ID, Region) %>%
   ungroup()
+
