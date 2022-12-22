@@ -46,7 +46,7 @@ Top_metric_Age_ind <- data_functional_role %>%
   group_by(Subj_ID, Metric_name, .add = TRUE) %>%
   group_split() %>%
   map_dfr(. %>% slice_max(Metric_value, n = top) %>%
-            mutate(rank = rep(seq(1:length(Region))))) %>%
+    mutate(rank = rep(seq(1:length(Region))))) %>%
   group_by(Subj_ID, .add = TRUE) %>%
   group_split()
 
@@ -60,7 +60,7 @@ for (i in 1:length(Top_metric_Age_ind)) {
     filter(Subj_ID == i) %>%
     dplyr::select(Subj_ID, Region, `1st_network`, Consensus_vector_0.15, Hub_consensus, Bridgeness, zFlow)
   Hub_selection[[i]] <- tmp
-  
+
   # Here I compute the proportion of functional roles regarding centrality and information flow
   # with the hubs specific to each subject
   FR_ind_hub <- tmp %>%
@@ -75,7 +75,7 @@ for (i in 1:length(Top_metric_Age_ind)) {
     mutate(freq = n / sum(n)) %>%
     dplyr::select(-n) %>%
     spread(Bridgeness, freq)
-  
+
   FR_ind <- cbind(FR_ind_hub, FR_ind_bridge)
   FR_list[[i]] <- FR_ind
 }

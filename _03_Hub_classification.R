@@ -15,6 +15,7 @@ library(tidylog)
 library(jsonlite) # for working with json files
 library(emmeans) # for post-hoc tests
 library(data.table) # for working with lists
+library(FactoMineR)
 
 
 rm(list = ls())
@@ -77,8 +78,9 @@ data_functional_role <- data_bind_PC_Wz %>%
   mutate(zFlow = as.numeric(scale(Flow_coeff))) %>%
   mutate(Bridgeness = ifelse(zBT > 0 & zFlow < 0, "Global_Bridge",
     ifelse(zFlow > 0 & zBT < 0, "Local_Bridge",
-      ifelse(zBT > 0 & zFlow > 0, "Super_Bridge", 
-             ifelse(zBT < 0 & zFlow < 0, "Not_a_Bridge", 0))
+      ifelse(zBT > 0 & zFlow > 0, "Super_Bridge",
+        ifelse(zBT < 0 & zFlow < 0, "Not_a_Bridge", 0)
+      )
     )
   )) %>%
   # Normalizing at the community level with the affiliation vector from consensus clustering
@@ -94,3 +96,29 @@ data_functional_role <- data_bind_PC_Wz %>%
   arrange(Subj_ID, Region) %>%
   ungroup()
 
+
+# Multilevel PCA
+# source("_multilevel_pca.R")
+#
+# validation_mPCA <- data_functional_role %>% dplyr::select(Subj_ID, zPC_cons, Within_module_z_cons, zBT, zFlow)
+#
+# # mpca <- multilevel_pca(scale(validation_mPCA %>% as.matrix()), id = validation_mPCA$Subj_ID,
+# #                        twoway = TRUE, cov.method = "m1", pve = 0.9)
+# # mpca$evectors
+# # mpca$varofTot
+# #
+# #
+# # validation_PCA <- validation_mPCA %>% group_by(Subj_ID) %>%
+# #   summarize_at(vars(everything()), funs(mean))
+# #
+# # results <- FactoMineR::PCA(scale(validation_PCA %>% dplyr::select(-Subj_ID)))
+# # results$eig
+# # results$var
+#
+# library(mixOmics)
+#
+# pca.result_multi <- mixOmics::pca(validation_mPCA %>% dplyr::select(-Subj_ID),
+#                             multilevel = validation_mPCA$Subj_ID, scale = TRUE)
+#
+# plotIndiv(pca.result_multi, ind.names = validation_mPCA$Subj_ID)
+# plotVar(pca.result_multi)
