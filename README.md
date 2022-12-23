@@ -15,8 +15,8 @@ Method Overview
 
 Features
 
-- Original methodology for accurate RSN assignment (with voxel-level precision) to ROIs 
-- New topological and functional hub classification according to modular and interareal nodal centrality measures
+- More accurate method for RSN assignment (with voxel-level precision) to ROIs 
+- Original topological and functional hub classification according to modular and interareal nodal centrality measures
 (i.e., degree, Participation coefficient, Within-module_z-score, Betweenness centrality, Flow coefficient)
 - Shiny app that displays the most likely topological reconfiguration trajectory according to the chosen RSN & chosen functional roles
 - https://clementguichet.shinyapps.io/shinyapp/
