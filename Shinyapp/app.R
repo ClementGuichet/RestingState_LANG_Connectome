@@ -1,4 +1,7 @@
 library(shiny)
+library(tidyverse)
+library(data.table)
+library(ggpubr)
 
 ui <- fluidPage(
   titlePanel("Topological trajectory between clusters", windowTitle = "Topological Trajectory - Shiny App"),
@@ -66,9 +69,6 @@ server <- function(input, output, session) {
                              selected = x
     )
   })
-  plot_all <- eventReactive(input$button, {
-    input$all
-  })
   
   plot_button <- eventReactive(input$button, {
     input$RSN_choice
@@ -79,18 +79,24 @@ server <- function(input, output, session) {
   })
   
   output$select_var <- renderText({
-    list_input <-  list()
-    for (i in 1:length(plot_button())) {
-      list_input[[i]] <- plot_button()[i]
-      tmp_bis <- rbindlist(lapply(list_input, as.data.table))
-      RSN_text <- capture.output(cat(tmp_bis %>% as.matrix(), sep = "|"))
-    }
-    if (plot_all() == TRUE) {
-      paste("This is the most probable trajectory for all regions combined.")
-    } else if (length(plot_button()) > 1) {
+    if (length(plot_button()) > 1) {
+      list_input <-  list()
+      for (i in 1:length(plot_button())) {
+        list_input[[i]] <- plot_button()[i]
+        tmp_bis <- rbindlist(lapply(list_input, as.data.table))
+        RSN_text <- capture.output(cat(tmp_bis %>% as.matrix(), sep = "|"))
+      }
       paste("This is the most probable trajectory for", RSN_text, "regions combined.")
-    } else {
+    } else if (length(plot_button()) == 1){
+      list_input <-  list()
+      for (i in 1:length(plot_button())) {
+        list_input[[i]] <- plot_button()[i]
+        tmp_bis <- rbindlist(lapply(list_input, as.data.table))
+        RSN_text <- capture.output(cat(tmp_bis %>% as.matrix(), sep = "|"))
+      }
       paste("This is the most probable trajectory for", RSN_text, "regions.")
+    } else {
+      paste("This is the most probable trajectory for all regions combined.")
     }
   })
   
@@ -208,17 +214,17 @@ server <- function(input, output, session) {
                    "Modular" = modular,
                    "Interareal" = interareal)
     
-    if (plot_all() == TRUE) {
-      RSN <- "Auditory|CON|DAN|DMN|FPN|Language|SMN|PMM|VMM|Visual_1|Visual_2"
-    } else if (length(plot_button()) == 1) {
+    if (length(plot_button()) == 1) {
       RSN <- input$RSN_choice
-    } else {
+    } else if (length(plot_button()) > 1) {
       list_input <-  list()
       for (i in 1:length(plot_button())) {
         list_input[[i]] <- plot_button()[i]
         tmp_bis <- rbindlist(lapply(list_input, as.data.table))
         RSN <- capture.output(cat(tmp_bis %>% as.matrix(), sep = "|"))
       }
+    } else {
+      RSN <- "Auditory|CON|DAN|DMN|FPN|Language|SMN|PMM|VMM|Visual_1|Visual_2"
     }
     trajectory(data, RSN)
   })
