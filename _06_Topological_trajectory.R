@@ -116,4 +116,4 @@ trajectory <- function(type_func_df, list_RSN) {
 # Pick the appropriate dataframe - modular_KL_2 or interareal_KL_2
 # Pick the desired RSN - to be specified in a grepl format e.g., "DMN|FPN|Language"
 
-trajectory(interareal_KL_2, "Visual_2")
+trajectory(modular_KL_2, "DMN|Language")
