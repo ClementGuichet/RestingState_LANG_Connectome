@@ -2,16 +2,30 @@ library(shiny)
 library(tidyverse)
 library(data.table)
 library(ggpubr)
+library(bslib)
+
+light = bs_theme(bootswatch = "minty")
+dark <- bslib::bs_theme(bg = "#101010", 
+                        fg = "#FDF7F7", 
+                        primary = "#ED79F9",
+                        secondary = "#1e90ff"
+)
 
 ui <- fluidPage(
-  titlePanel("Topological trajectory between clusters", windowTitle = "Topological Trajectory - Shiny App"),
+  theme = dark,
+  titlePanel(
+    h1("Topological trajectory between clusters"),
+    windowTitle = "Topological Trajectory - Shiny App"
+    ),
+  p(""),
   
   sidebarLayout(
-    sidebarPanel(
-      p("The goal of this app is to display the most likely topological reconfiguration trajectory between two age clusters"),
+    sidebarPanel(width = 4,
+      p("Explore the most likely topological reconfiguration trajectory between two age clusters"),
+      checkboxInput("dark_mode", "Dark mode", value = TRUE),
       p("Visit", em(a("github.com/ClementGuichet/RestingState_LANG_Connectome", href="https://github.com/ClementGuichet/RestingState_LANG_Connectome")), "for more information"),
       checkboxGroupInput("RSN_choice", 
-                         h4("Choose the resting-state networks to be displayed"),
+                         h4("Pick resting-state networks"),
         choices = list("Auditory" = "Auditory",
                        "CON" = "CON",
                        "DAN" = "DAN",
@@ -25,17 +39,17 @@ ui <- fluidPage(
                        "Visual_2" = "Visual_2"
                        )
       ),
-      p("You can freely choose to either visualize the", strong("modular or interareal"), "functional role reconfiguration"),
+      checkboxInput("all", "Plot all regions"),
+      
       selectInput("functional_role", 
-                   h4("Choose the functional roles to be displayed"),
+                   h4("Explore modular or interareal functional role reconfiguration"),
                    choices = list("Modular" = "Modular",
                                   "Interareal" = "Interareal"
                                   )),
-      checkboxInput("all", "Plot all regions"),
-      actionButton("button", "Plot trajectory", width = 150),
+      actionButton("button", "Plot trajectory", width = 460, style = "font-size: 20px"),
     ),
     mainPanel(
-      h3(textOutput("select_var")),      
+      h3(textOutput("select_var"), align = "center"),      
       shinycssloaders::withSpinner(
         plotOutput("plot", height = 650),
         hide.ui = FALSE
@@ -44,8 +58,13 @@ ui <- fluidPage(
   )
 )
 
+
 # Define server logic ----
 server <- function(input, output, session) {
+  
+  observe(session$setCurrentTheme(
+    if (isTRUE(input$dark_mode)) dark else light
+  ))
   
   observe({
     x <- input$all
