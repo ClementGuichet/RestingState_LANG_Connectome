@@ -1,12 +1,12 @@
 library(shiny)
 
 ui <- fluidPage(
-  titlePanel("Topological trajectory between clusters"),
+  titlePanel("Topological trajectory between clusters", windowTitle = "Topological Trajectory - Shiny App"),
   
   sidebarLayout(
     sidebarPanel(
       p("The goal of this app is to display the most likely topological reconfiguration trajectory between two age clusters"),
-      p("You can freely choose to either visualize the", strong("modular or interareal"), "functional role reconfiguration"),
+      p("Visit", em(a("github.com/ClementGuichet/RestingState_LANG_Connectome", href="https://github.com/ClementGuichet/RestingState_LANG_Connectome")), "for more information"),
       checkboxGroupInput("RSN_choice", 
                          h4("Choose the resting-state networks to be displayed"),
         choices = list("Auditory" = "Auditory",
@@ -19,27 +19,79 @@ ui <- fluidPage(
                        "PMM" = "PMM",
                        "VMM" = "VMM",
                        "Visual_1" = "Visual_1",
-                       "Visual_2" = "Visual_2",
-                       "All" = "All"
+                       "Visual_2" = "Visual_2"
                        )
       ),
+      p("You can freely choose to either visualize the", strong("modular or interareal"), "functional role reconfiguration"),
       selectInput("functional_role", 
                    h4("Choose the functional roles to be displayed"),
                    choices = list("Modular" = "Modular",
                                   "Interareal" = "Interareal"
-                                  ))
+                                  )),
+      checkboxInput("all", "Plot all regions"),
+      actionButton("button", "Plot trajectory", width = 150),
     ),
     mainPanel(
-      textOutput("select_var"),
-      plotOutput("plot")
+      h3(textOutput("select_var")),      
+      shinycssloaders::withSpinner(
+        plotOutput("plot", height = 650),
+        hide.ui = FALSE
+      )
     )
   )
 )
 
 # Define server logic ----
-server <- function(input, output) {
+server <- function(input, output, session) {
+  
+  observe({
+    x <- input$all
+    
+    if (is.null(x))
+      x <- character(0)
+    
+    updateCheckboxGroupInput(session, "RSN_choice",
+                             choices = list("Auditory" = "Auditory",
+                                            "CON" = "CON",
+                                            "DAN" = "DAN",
+                                            "DMN" = "DMN",
+                                            "FPN" = "FPN",
+                                            "Language" = "Language",
+                                            "SMN" = "SMN",
+                                            "PMM" = "PMM",
+                                            "VMM" = "VMM",
+                                            "Visual_1" = "Visual_1",
+                                            "Visual_2" = "Visual_2"
+                             ),
+                             selected = x
+    )
+  })
+  plot_all <- eventReactive(input$button, {
+    input$all
+  })
+  
+  plot_button <- eventReactive(input$button, {
+    input$RSN_choice
+  })
+  
+  plot_button_bis <- eventReactive(input$button, {
+    input$functional_role
+  })
+  
   output$select_var <- renderText({
-    paste("This is the most probable trajectory for", input$RSN_choice, "regions.")
+    list_input <-  list()
+    for (i in 1:length(plot_button())) {
+      list_input[[i]] <- plot_button()[i]
+      tmp_bis <- rbindlist(lapply(list_input, as.data.table))
+      RSN_text <- capture.output(cat(tmp_bis %>% as.matrix(), sep = "|"))
+    }
+    if (plot_all() == TRUE) {
+      paste("This is the most probable trajectory for all regions combined.")
+    } else if (length(plot_button()) > 1) {
+      paste("This is the most probable trajectory for", RSN_text, "regions combined.")
+    } else {
+      paste("This is the most probable trajectory for", RSN_text, "regions.")
+    }
   })
   
   output$plot <- renderPlot({ 
@@ -152,27 +204,29 @@ server <- function(input, output) {
       }
     }
     
-    data <- switch(input$functional_role,
+    data <- switch(plot_button_bis(),
                    "Modular" = modular,
                    "Interareal" = interareal)
     
-    RSN <- switch(input$RSN_choice,
-                  "Auditory" = "Auditory",
-                  "CON" = "CON",
-                  "DAN" = "DAN",
-                  "DMN" = "DMN",
-                  "FPN" = "FPN",
-                  "Language" = "Language",
-                  "SMN" = "SMN",
-                  "PMM" = "PMM",
-                  "VMM" = "VMM",
-                  "Visual_1" = "Visual_1",
-                  "Visual_2" = "Visual_2", 
-                  "All" = "Auditory|CON|DAN|DMN|FPN|Language|SMN|PMM|VMM|Visual_1|Visual_2")
-    
+    if (plot_all() == TRUE) {
+      RSN <- "Auditory|CON|DAN|DMN|FPN|Language|SMN|PMM|VMM|Visual_1|Visual_2"
+    } else if (length(plot_button()) == 1) {
+      RSN <- input$RSN_choice
+    } else {
+      list_input <-  list()
+      for (i in 1:length(plot_button())) {
+        list_input[[i]] <- plot_button()[i]
+        tmp_bis <- rbindlist(lapply(list_input, as.data.table))
+        RSN <- capture.output(cat(tmp_bis %>% as.matrix(), sep = "|"))
+      }
+    }
     trajectory(data, RSN)
   })
 }
 
 shinyApp(ui = ui, server = server)
+
+
+
+
 
