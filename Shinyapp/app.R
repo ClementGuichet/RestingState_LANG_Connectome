@@ -50,24 +50,35 @@ server <- function(input, output, session) {
   observe({
     x <- input$all
     
-    if (is.null(x))
-      x <- character(0)
+    if (!(is.null(x))) {
+        y <- character(1)
+        
+        updateCheckboxGroupInput(session, "RSN_choice",
+                                 choices = list("Auditory" = "Auditory",
+                                                "CON" = "CON",
+                                                "DAN" = "DAN",
+                                                "DMN" = "DMN",
+                                                "FPN" = "FPN",
+                                                "Language" = "Language",
+                                                "SMN" = "SMN",
+                                                "PMM" = "PMM",
+                                                "VMM" = "VMM",
+                                                "Visual_1" = "Visual_1",
+                                                "Visual_2" = "Visual_2"
+                                 ),
+                                 selected = y
+        )
+      }
+    })
+  
+  observe({
+    x <- input$RSN_choice
     
-    updateCheckboxGroupInput(session, "RSN_choice",
-                             choices = list("Auditory" = "Auditory",
-                                            "CON" = "CON",
-                                            "DAN" = "DAN",
-                                            "DMN" = "DMN",
-                                            "FPN" = "FPN",
-                                            "Language" = "Language",
-                                            "SMN" = "SMN",
-                                            "PMM" = "PMM",
-                                            "VMM" = "VMM",
-                                            "Visual_1" = "Visual_1",
-                                            "Visual_2" = "Visual_2"
-                             ),
-                             selected = x
-    )
+    if (!(is.null(x))) {
+      y <- character(1)
+      
+      updateCheckboxInput(session, "all", "Plot all regions", value = y)
+    }
   })
   
   plot_button <- eventReactive(input$button, {
