@@ -1,12 +1,14 @@
 rm(list=ls())
 
 source("_05_Age_effect_post_clustering.R")
+
 library(philentropy)
 
 ################################################################################
 # For resting state networks
 ################################################################################
 
+# Evolution of within-RSN variability between clusters
 gJSD_heuristic <- function(cluster1, cluster2) {
   # Retain only the rows specific of the two clusters
   tmp_cluster_0 <- data_post_clustering %>% subset(cluster == cluster1 | cluster == cluster2)
@@ -162,6 +164,7 @@ gJSD_heuristic <- function(cluster1, cluster2) {
 }
 gJSD_heuristic("23.5", "56")
 
+# Strength of between-cluster reconfiguration
 KL_heuristic <- function(cluster1, cluster2, norm = NULL) {
   
   # Final dataframe with only the subjects of chosen clusters, their hub regions and the RSNs -----
@@ -343,37 +346,174 @@ KL_heuristic <- function(cluster1, cluster2, norm = NULL) {
   }
 }
 
-# Should the KLD for each region be normalized by the difference between clusters in the between-region variability for each RSN?
+# If normalized, then the radar plot displays the RSN with the most amount of topological reconfiguration
+# combined with high specificity: all regions within the RSN reconfigure in unison towards a specific functional role
 KL_heuristic("23.5", "56", norm = TRUE)
 
+# Arbitrary threshold to pick the RSN to investigate the difference in proportions
 median(as.numeric(Radar_RSN_modular))
 median(as.numeric(Radar_RSN_interareal))
 
 
-# PDF Visualisation, it's like the log-ratio radar plot but with added information of whether individuals do agree
+# Consistency computation ----
+# A RSN is considered to have a consistent reconfiguration if regions with the same functional role have the same most probable trajectory
 
-# agreement_pdf <- agreement_KL %>%
-#   arrange(Region, cluster, Hub_consensus) %>%
-#   filter(Hub_consensus != "Isolate") %>%
-#   filter(grepl("DMN|FPN|Language", `1st_network`))
-# filter(grepl("Auditory|SMN", `1st_network`))
+# Specificity necessarily entails consistency but the reciprocal is not true:
+# If all regions reconfigure towards a same functional role as a whole, this is necessarily true at for every functional role
+# Conversely, regions with a same functional role can be very consistent in their reconfiguration but not very specific, that is in unison, with the other consistent trajectories
+
+
+consistency <- function(type_func_df, cluster1, cluster2) {
+  adjacency_to_2col <- function(dataframe) {
+    crossdata <- lapply(rownames(data), function(x) sapply(colnames(data), function(y) list(x, y, data[x, y])))
+    crossdatatmp <- matrix(unlist(crossdata), nrow = 3)
+    crossdatamat <- t(crossdatatmp)
+    colnames(crossdatamat) <- c(cluster1, cluster2, "Value")
+    crossdatadf <- as.data.frame(crossdatamat, stringsAsFactors = F)
+    crossdatadf[, 3] <- as.numeric(crossdatadf[, 3])
+    return(crossdatadf)
+  }
+  
+  # For each region, compute the probability of every possible trajectory
+  # 4*4 functional roles = 16 possible trajectories for each region
+  if (colnames(type_func_df[4]) == "Hub_consensus") {
+    Cond_PMF <- type_func_df %>%
+      spread(cluster, freq) %>%
+      arrange(Hub_consensus) %>% 
+      group_by(Region, .add = TRUE) %>%
+      group_split()
+  } else {
+    Cond_PMF <- type_func_df %>%
+      spread(cluster, freq) %>%
+      arrange(Bridgeness) %>% 
+      group_by(Region, .add = TRUE) %>%
+      group_split()
+  }
+  
+  pairwise_prob_list <- list()
+  for (i in 1:length(Cond_PMF)) {
+    tmp <- rbindlist(Cond_PMF[i])
+    data <- outer(tmp[,4] %>% as.matrix(), tmp[,5] %>% as.matrix()) %>% as.data.frame()
+    if (colnames(type_func_df[4]) == "Hub_consensus") {
+      colnames(data) <- c("Connector", "Peripheral", "Provincial", "Satellite")
+      rownames(data) <- c("Connector", "Peripheral", "Provincial", "Satellite")
+    } else {
+      colnames(data) <- c("Global_Bridge", "Local_Bridge", "Not_a_Bridge", "Super_Bridge")
+      rownames(data) <- c("Global_Bridge", "Local_Bridge", "Not_a_Bridge", "Super_Bridge")
+    }
+    crossdatadf <- adjacency_to_2col(data) 
+    pairwise_prob_list[[i]] <- cbind(tmp %>% slice(1:nrow(crossdatadf)) %>% dplyr::select(`1st_network`, Region), crossdatadf)
+  }
+  
+  
+  
+  # Remove non-existent trajectories
+  pairwise_prob <- rbindlist(pairwise_prob_list) %>% 
+    filter(Value != 0)
+  
+  consistency_1 <- pairwise_prob %>% unite(., trajectory, c(colnames(.[,3]), colnames(.[,4])), remove = FALSE) %>% 
+    arrange(`1st_network`, Region, trajectory)
+  
+# Other approach with gJSD
+
+# Compute each possible trajectories and their probability
+# Normalize the probabilities for each RSN for each starting functional role
+# Compare region, functional role avec gJSD
 # 
-# # ridge plot
-# ggplot(agreement_pdf, aes(x = freq, y = forcats::fct_rev(`1st_network`), fill = cluster, height = ..density..)) +
-#   ggridges::geom_density_ridges(scale = 1, show.legend = TRUE, alpha = 0.7, stat = "density") +
-#   scale_x_continuous(name = "Relative proportion within the topologico-functional profile", limits = c(0, 1), labels = scales::percent) +
-#   # control space at top and bottom of plot
-#   scale_y_discrete(name = "") +
-#   scale_fill_viridis_d(option = "D") + # colourblind-safe colours
-#   facet_wrap(~Hub_consensus) +
-#   theme_pubclean() +
-#   ggtitle("Within and between cluster divergence as a function of the relative proportion of each functional role")
+  consistency_gJSD_split <- consistency_1 %>%
+    ungroup() %>%
+    arrange(`1st_network`, Region, trajectory) %>% 
+    group_by(`1st_network`, .[,4], .add = TRUE) %>%
+    group_split()
+  
+  gJSD_list <- list()
+  for (i in 1:length(consistency_gJSD_split)) {
+    tmp <- rbindlist(consistency_gJSD_split[i]) %>%
+      group_by(Region) %>% 
+      mutate(norm_prob = Value/sum(Value)) %>% 
+      dplyr::select(`1st_network`, Region, trajectory, colnames(.[,4]), norm_prob)
+    
+    tmp_bis <- tmp %>% 
+      spread(trajectory, norm_prob) %>% ungroup()
+    
+    tmp_ter <- tmp_bis %>% 
+      dplyr::select(-c(`1st_network`, colnames(.[,3]))) %>%
+      remove_rownames() %>%
+      column_to_rownames("Region") %>% 
+      mutate_all(., ~replace(., is.na(.), 0))
+    
+    gJSD <- philentropy::gJSD(tmp_ter %>% as.matrix())
+    gJSD_list[[i]] <- cbind(tmp_bis %>% slice(1) %>% dplyr::select(`1st_network`, colnames(.[,3])), gJSD)
+  }
+  
+  consistency_gJSD <<- rbindlist(gJSD_list) %>% as.data.frame() %>% 
+    plyr::rename(c("gJSD" = "Generalized_Jensen_Shannon_divergence"))
+  
+  Radar_RSN_consistency_gJSD <- consistency_gJSD %>%  
+    group_by(.[1]) %>% summarize_at(vars(everything()), mean) %>% 
+    dplyr::select(-colnames(.[,2])) %>% 
+    spread(`1st_network`, Generalized_Jensen_Shannon_divergence) 
+  
+  radarplotting_overlap(Radar_RSN_consistency_gJSD, 1, 0, 1, 1, inverse_grad = TRUE,
+                        alpha = 0.5, label_size = 1, 
+                        title_fill = "gJSD Consistency",
+                        palette = RColorBrewer::brewer.pal(8, "Dark2")
+  )
+}
 
-# The variance of the density functions represents the degree of within-cluster divergence
-# the assigned probability is the proportion of functional role within the composition
-# A PDF with high kurtosis that individuals within the cluster agree a lot of the proportion of the functional role
-# For example, individuals within cluster 56 tend to agree a lot that Provincial hubs represent 0 to 10% of their TFP
-# whether there's is much higher disagreement within cluster 23
+consistency(modular_KL_2, "23.5", "56")
+
+  
+  # # Count the number of similar trajectories
+  # consistency_2 <- consistency_1 %>% 
+  #   group_by(`1st_network`, trajectory, .[,4]) %>% 
+  #   summarize(n = n()) %>% 
+  #   mutate(freq = n/sum(n))
+  # 
+  # consistency_2_bis <- consistency_1 %>% distinct(Region, .keep_all = TRUE) %>%  
+  #   group_by(`1st_network`) %>% 
+  #   summarize(n_region = n())
+  # 
+  # consistency_2_merge <- merge(consistency_2, consistency_2_bis, by = "1st_network") %>% 
+  #   mutate(freq = n/n_region)
+  # 
+  # # Normalize this count by the mean probability that this trajectory occurs
+  # consistency_3 <- consistency_1 %>%  
+  #   group_by(`1st_network`, trajectory, .[,4]) %>% 
+  #   summarize_at(vars(Value), mean) %>% 
+  #   # normalize the probability of trajectory occurence by each functional role
+  #   group_by(`1st_network`, .[,3]) %>% 
+  #   mutate(norm_prob = Value/sum(Value)) %>% 
+  #   cbind(., freq = consistency_2_merge$freq) %>% 
+  #   # Frequency of the trajectory within the RSN multiplied by the probability
+  #   mutate(consistency_score = freq*norm_prob) %>% 
+  #   # Keep only the highest consistency score for each functionak role
+  #   group_by(`1st_network`, .[,3]) %>% slice_max(consistency_score) %>% 
+  #   distinct(consistency_score, .keep_all = TRUE)
+  #         
+  # consistency_final <- consistency_3 %>% 
+  #   # Normalize for each starting functional role
+  #   group_by(`1st_network`) %>% 
+  #   summarise_at(vars(consistency_score), mean)
+  # 
+  # Radar_RSN_consistency <- consistency_final %>%
+  #   spread(`1st_network`, consistency_score) %>% 
+  #   mutate_at(vars(everything()), funs(. * 10))
+  # 
+  # radarplotting_overlap(Radar_RSN_consistency, 5, 1, 1, 1,
+  #                       alpha = 0.3, label_size = 1, 
+  #                       title_fill = "Consistency score",
+  #                       palette = RColorBrewer::brewer.pal(8, "Dark2")
+  # )
+
+  
+
+
+
+  
+
+
+
 
 
 

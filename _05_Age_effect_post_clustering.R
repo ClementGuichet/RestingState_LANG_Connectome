@@ -61,7 +61,7 @@ Rmisc::multiplot(a, b, c)
 # Final dataframe with only the subjects of chosen clusters, their hub regions and the RSNs -----
 
 # Retain only the rows specific of the two clusters
-tmp_cluster_0 <- data_post_clustering %>% subset(cluster == "23" | cluster == "65.5")
+tmp_cluster_0 <- data_post_clustering %>% subset(cluster == "23" | cluster == "56")
 # Get the associated Resting-state networks
 tmp_cluster_1 <- filter(data_functional_role, Subj_ID %in% tmp_cluster_0$Subj_ID)
 # Hub region specific to each subject yielded by hub detection procedure
@@ -168,13 +168,13 @@ Radar_functional_role_geometric_age <- data_post_clustering %>%
   column_to_rownames(var = "cluster")
 
 radarplotting_overlap(Radar_functional_role_geometric_age, 1, -1, 1, 1,
-  alpha = 0.05, label_size = 1,
+  alpha = 0.5, label_size = 1,
   title_fill = "Topologico-functional profile of each cluster",
   palette = RColorBrewer::brewer.pal(8, "Dark2")
 )
 
 legend(
-  x = "topright", title = "Median age of each cluster\n Based on ILR-transformed Wald Hierarchichal clustering",
+  x = "topright", title = "Median age of each cluster\n Based on Model-based clustering\n with principal balances",
   legend = rownames(Radar_functional_role_geometric_age), horiz = TRUE,
   bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
   text.col = "black", cex = 1, pt.cex = 2
@@ -222,7 +222,7 @@ Radar_hub_RSN <- tmp_cluster_final %>%
   mutate_at(vars(everything()), funs(. * 100))
 
 radarplotting_overlap(Radar_hub_RSN, 30, 0, 1, 1,
-  alpha = 0.05, label_size = 1,
+  alpha = 0.7, label_size = 1,
   title_fill = "Distribution of hubs regions across RSNs",
   palette = RColorBrewer::brewer.pal(8, "Dark2")
 )
@@ -249,7 +249,7 @@ Radar_hub_community <- tmp_cluster_final %>%
   mutate_at(vars(everything()), funs(. * 100))
 
 radarplotting_overlap(Radar_hub_community, 50, 0, 1, 1,
-  alpha = 0.05, label_size = 1,
+  alpha = 0.7, label_size = 1,
   title_fill = "Distribution of hubs regions across communities",
   palette = RColorBrewer::brewer.pal(8, "Dark2")
 )
