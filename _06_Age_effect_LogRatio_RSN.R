@@ -4,15 +4,10 @@
 ################################################################################
 source("_05_Age_effect_Kullback_Leibler.R")
 # Difference in the proportion of each functional role within each RSN for the two selected clusters
-cluster1 <- "23"
-cluster2 <- "56"
 
 interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min2, alpha, divergent_RSN_modular, divergent_RSN_interareal) {
-  # Pick clusters
-  a <- cluster1
-  b <- cluster2
   
-  tmp_cluster_0 <- data_post_clustering %>% subset(cluster == a | cluster == b)
+  tmp_cluster_0 <- data_post_clustering %>% subset(cluster == cluster1 | cluster == cluster2)
   # Get the associated Resting-state networks
   tmp_cluster_1 <- filter(data_functional_role, Subj_ID %in% tmp_cluster_0$Subj_ID)
   # 2a
@@ -43,15 +38,14 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
   
     # Replace essential zeros at the regional and cluster level
   replacement_a1 <- multRepl(delta_proportion_a1 %>%
-                               dplyr::select(Connector:Satellite), dl = rep(1, 5), label = 0, frac = 1e-5)
+                               dplyr::select(Connector:Satellite), dl = rep(1, 4), label = 0, frac = 1e-5)
   
   delta_proportion_a <<- cbind(delta_proportion_a1 %>%
                                  dplyr::select(`1st_network`:cluster), replacement_a1) %>%
-    dplyr::select(-Isolate) %>% 
     pivot_longer(cols = !c("1st_network", "Region", "cluster"), names_to = "Hub_consensus", values_to = "freq") %>%
     # Compute the geometric mean for each RSN
     group_by(`1st_network`, cluster, Hub_consensus) %>%
-    summarise_at(vars(freq), funs(geometricmean(.))) %>% 
+    summarise_at(vars(freq), funs(geometricmean(.)))  %>% 
     group_by(`1st_network`, Hub_consensus) %>%
     # Take the log ratio of geometric mean between clusters
     # 
@@ -144,9 +138,9 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
     text.col = "black", cex = 1, pt.cex = 2
   )
 }
-interaction_Age_FuncRole_RSN(cluster1, cluster2, 6, -6, 6, -6, 0.1,
-                             divergent_RSN_modular = "Auditory|CON|DMN|FPN|Language|SMN",
-                             divergent_RSN_interareal = "Auditory|CON|DMN|FPN|Language|PMM|SMN|Visual_2"
+interaction_Age_FuncRole_RSN("23.5", "56", 2, -6, 6, -6, 0.1,
+                             divergent_RSN_modular = "CON|DMN|FPN|Language|SMN",
+                             divergent_RSN_interareal = "CON|DMN|FPN|Language|PMM|SMN|Visual_2"
 )
 
 # Difference in the proportion of each functional role within each community for the two selected clusters
@@ -267,7 +261,7 @@ interaction_Age_FuncRole_community <- function(cluster1, cluster2, max, min, max
     text.col = "black", cex = 1, pt.cex = 2
   )
 }
-interaction_Age_FuncRole_community(cluster1, cluster2, 4, -4, 6, -6, 0.1
+interaction_Age_FuncRole_community("23", "65.5", 4, -4, 6, -6, 0.1
 )
 # More global interfaces in RS-NET 2 & 4 but more Local & mixed interfaces in RS-NET 3
 # Proportion in RS-NET 1 do not seem to change

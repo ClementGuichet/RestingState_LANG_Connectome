@@ -7,14 +7,6 @@ library(philentropy)
 # For resting state networks
 ################################################################################
 
-
-
-################################################################################
-# This looks at the variability between regions within each RSN
-# For each cluster and each RSN, the generalized Jensen-Shannon divergence is computed which reflects
-# the amount of variability between regions penalized by within-cluster variability
-# High gJSD indicates high between region variability and low within-cluster variability
-
 gJSD_heuristic <- function(cluster1, cluster2) {
   # Retain only the rows specific of the two clusters
   tmp_cluster_0 <- data_post_clustering %>% subset(cluster == cluster1 | cluster == cluster2)
@@ -32,7 +24,7 @@ gJSD_heuristic <- function(cluster1, cluster2) {
                              by = "Subj_ID"
   )
   
-  modular_gJSD_1 <- tmp_cluster_final %>%
+  modular_gJSD_2 <- tmp_cluster_final %>%
     group_by(`1st_network`, Region, cluster, Subj_ID, Hub_consensus) %>%
     summarise(n = n()) %>%
     mutate(freq = n / sum(n)) %>%
@@ -42,15 +34,15 @@ gJSD_heuristic <- function(cluster1, cluster2) {
     group_by(`1st_network`, Region, cluster) %>%
     summarise_at(vars(Connector:Satellite), mean) %>% 
     ungroup() %>%
-    arrange(cluster, `1st_network`)
+    arrange(cluster, `1st_network`) %>% 
   
-  modular_gJSD_2 <- cbind(
-    modular_gJSD_1 %>% dplyr::select(`1st_network`:cluster),
-    multRepl(modular_gJSD_1 %>% dplyr::select(Connector:Satellite),
-             label = 0, dl = rep(1, 5), frac = 1e-5
-    )
-  ) %>%
-    ungroup() %>%
+  # modular_gJSD_2 <- cbind(
+  #   modular_gJSD_1 %>% dplyr::select(`1st_network`:cluster),
+  #   multRepl(modular_gJSD_1 %>% dplyr::select(Connector:Satellite),
+  #            label = 0, dl = rep(1, 5), frac = 1e-5
+  #   )
+  # ) %>%
+  #   ungroup() %>%
     pivot_longer(
       cols = !c("1st_network", "Region", "cluster"),
       names_to = "Hub_consensus", values_to = "freq"
@@ -159,34 +151,23 @@ gJSD_heuristic <- function(cluster1, cluster2) {
     bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
     text.col = "black", cex = 1, pt.cex = 2
   )
+  
+  final_heuristic <<- modular_gJSD_3 %>% group_by(`1st_network`) %>% 
+    mutate(between_cluster_var = Generalized_Jensen_Shannon_divergence / lag(Generalized_Jensen_Shannon_divergence)) %>% 
+    na.omit()
+  
+  final_heuristic_bis <<- interareal_gJSD_3 %>% group_by(`1st_network`) %>% 
+    mutate(between_cluster_var = Generalized_Jensen_Shannon_divergence / lag(Generalized_Jensen_Shannon_divergence)) %>% 
+    na.omit()
 }
+gJSD_heuristic("23.5", "56")
 
-gJSD_heuristic("23", "56")
-
-
-final_heuristic <<- modular_gJSD_3 %>% group_by(`1st_network`) %>% 
-  mutate(between_cluster_var = Generalized_Jensen_Shannon_divergence / lag(Generalized_Jensen_Shannon_divergence)) %>% 
-  na.omit()
-
-final_heuristic_bis <<- interareal_gJSD_3 %>% group_by(`1st_network`) %>% 
-  mutate(between_cluster_var = Generalized_Jensen_Shannon_divergence / lag(Generalized_Jensen_Shannon_divergence)) %>% 
-  na.omit()
-
-# This function returns the median relative relative entropy of the PMF between clusters
-# High KLD indicates high between cluster variability and low within-cluster variability
-
-# The function also returns two dataframes, 
-# one for each PMF that is used later when looking at the topological trajectory
-
-# The function also returns a boolean vector for each PMF indicating the RSN to be kept when computing the log-ratios
-# That is, the RSN with the most amount of reconfiguration
-
-KL_heuristic <- function(norm = NULL) {
+KL_heuristic <- function(cluster1, cluster2, norm = NULL) {
   
   # Final dataframe with only the subjects of chosen clusters, their hub regions and the RSNs -----
   
   # Retain only the rows specific of the two clusters
-  tmp_cluster_0 <- data_post_clustering %>% subset(cluster == "23" | cluster == "56")
+  tmp_cluster_0 <- data_post_clustering %>% subset(cluster == cluster1 | cluster == cluster2)
   # Get the associated Resting-state networks
   tmp_cluster_1 <- filter(data_functional_role, Subj_ID %in% tmp_cluster_0$Subj_ID)
   # Hub region specific to each subject yielded by hub detection procedure
@@ -213,13 +194,14 @@ KL_heuristic <- function(norm = NULL) {
     ungroup() %>% 
     arrange(Region)
   
-  modular_KL_2 <<- cbind(
-    modular_KL_1 %>% dplyr::select(`1st_network`:cluster),
-    # Replace essential zeros with 1e-5
-    multRepl(modular_KL_1 %>% dplyr::select(Connector:Satellite),
-             label = 0, dl = rep(1, 5), frac = 1e-5
-    )
-  )  %>% 
+  # modular_KL_2 <<- cbind(
+  #   modular_KL_1 %>% dplyr::select(`1st_network`:cluster),
+  #   # Replace essential zeros with 1e-5
+  #   multRepl(modular_KL_1 %>% dplyr::select(Connector:Satellite),
+  #            label = 0, dl = rep(1, 5), frac = 1e-5
+  #   )
+  # )  %>% 
+  modular_KL_2 <<- modular_KL_1 %>% 
     pivot_longer(
       cols = !c("1st_network", "Region", "cluster"),
       names_to = "Hub_consensus", values_to = "freq"
@@ -302,14 +284,14 @@ KL_heuristic <- function(norm = NULL) {
   
   # To quantify how topological reconfiguration is taking place within each RSN between clusters
   if (norm == TRUE) {
-    Radar_RSN_modular <- modular_KL_3 %>%
+    Radar_RSN_modular <<- modular_KL_3 %>%
     merge(., final_heuristic %>% dplyr::select(`1st_network`, between_cluster_var), by = "1st_network") %>% 
     mutate(norm_KL = Kullback_Leibler_divergence/between_cluster_var) %>% 
     group_by(`1st_network`) %>%
     summarize_at(vars(norm_KL), mean) %>%
     spread(`1st_network`, norm_KL)
   
-  Radar_RSN_interareal <- interareal_KL_3 %>%
+  Radar_RSN_interareal <<- interareal_KL_3 %>%
     merge(., final_heuristic_bis %>% dplyr::select(`1st_network`, between_cluster_var), by = "1st_network") %>% 
     mutate(norm_KL = Kullback_Leibler_divergence/between_cluster_var) %>% 
     group_by(`1st_network`) %>%
@@ -332,16 +314,13 @@ KL_heuristic <- function(norm = NULL) {
     text.col = "black", cex = 1, pt.cex = 2
   )
   
-  # Auditory   CON  DAN   DMN   FPN Language   PMM  SMN Visual_1 Visual_2   VMM
-  choice_modular <<- scale(as.numeric(Radar_RSN_modular)) >= 0
-  choice_interareal <<- scale(as.numeric(Radar_RSN_interareal)) >= 0
   } else {
-    Radar_RSN_modular <- modular_KL_3 %>%
+    Radar_RSN_modular <<- modular_KL_3 %>%
       group_by(`1st_network`) %>%
       summarize_at(vars(Kullback_Leibler_divergence), mean) %>%
       spread(`1st_network`, Kullback_Leibler_divergence)
     
-    Radar_RSN_interareal <- interareal_KL_3 %>%
+    Radar_RSN_interareal <<- interareal_KL_3 %>%
       group_by(`1st_network`) %>%
       summarize_at(vars(Kullback_Leibler_divergence), mean) %>%
       spread(`1st_network`, Kullback_Leibler_divergence)
@@ -361,18 +340,15 @@ KL_heuristic <- function(norm = NULL) {
       bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
       text.col = "black", cex = 1, pt.cex = 2
     )
-    
-    # Auditory   CON  DAN   DMN   FPN Language   PMM  SMN Visual_1 Visual_2   VMM
-    choice_modular <<- scale(as.numeric(Radar_RSN_modular)) >= 0
-    choice_interareal <<- scale(as.numeric(Radar_RSN_interareal)) >= 0
   }
 }
 
 # Should the KLD for each region be normalized by the difference between clusters in the between-region variability for each RSN?
-KL_heuristic(norm = TRUE)
+KL_heuristic("23.5", "56", norm = TRUE)
 
-choice_modular
-choice_interareal
+median(as.numeric(Radar_RSN_modular))
+median(as.numeric(Radar_RSN_interareal))
+
 
 # PDF Visualisation, it's like the log-ratio radar plot but with added information of whether individuals do agree
 

@@ -5,20 +5,20 @@ source("_05_Age_effect_Kullback_Leibler.R")
 # Most likely trajector with Conditional PMFs
 # ******************************************************************************
 
-trajectory <- function(type_func_df, list_RSN) {
+trajectory <- function(type_func_df, cluster1, cluster2, list_RSN) {
   # Convert an adjacency dataframe to a 2-column dataframe
   adjacency_to_2col <- function(dataframe) {
     crossdata <- lapply(rownames(data), function(x) sapply(colnames(data), function(y) list(x, y, data[x, y])))
     crossdatatmp <- matrix(unlist(crossdata), nrow = 3)
     crossdatamat <- t(crossdatatmp)
-    colnames(crossdatamat) <- c("23", "56", "Value")
+    colnames(crossdatamat) <- c(cluster1, cluster2, "Value")
     crossdatadf <- as.data.frame(crossdatamat, stringsAsFactors = F)
     crossdatadf[, 3] <- as.numeric(crossdatadf[, 3])
     return(crossdatadf)
   }
   
   # For each region, find the most probable trajectory
-  if (colnames(type_func_df[,4]) == "Hub_consensus") {
+  if (colnames(type_func_df[4]) == "Hub_consensus") {
     Cond_PMF <- type_func_df %>%
       spread(cluster, freq) %>%
       arrange(Hub_consensus) %>% 
@@ -36,34 +36,33 @@ trajectory <- function(type_func_df, list_RSN) {
   Cond_PMF_list <- list()
   for (i in 1:length(Cond_PMF)) {
     tmp <- rbindlist(Cond_PMF[i])
-    data <- outer(tmp$`23`, tmp$`56`) %>% as.data.frame()
-    if (colnames(type_func_df[,4]) == "Hub_consensus") {
-      colnames(data) <- c("Connector", "Isolate", "Peripheral", "Provincial", "Satellite")
-      rownames(data) <- c("Connector", "Isolate", "Peripheral", "Provincial", "Satellite")
+    data <- outer(tmp[,4] %>% as.matrix(), tmp[,5] %>% as.matrix()) %>% as.data.frame()
+    if (colnames(type_func_df[4]) == "Hub_consensus") {
+      colnames(data) <- c("Connector", "Peripheral", "Provincial", "Satellite")
+      rownames(data) <- c("Connector", "Peripheral", "Provincial", "Satellite")
     } else {
       colnames(data) <- c("Global_Bridge", "Local_Bridge", "Not_a_Bridge", "Super_Bridge")
       rownames(data) <- c("Global_Bridge", "Local_Bridge", "Not_a_Bridge", "Super_Bridge")
     }
     crossdatadf <- adjacency_to_2col(data)
     data_2 <- crossdatadf %>% dplyr::slice_max(Value)
-    data_3 <- cbind(tmp %>% slice(1:nrow(data_2)) %>% dplyr::select(`1st_network`, Region), data_2)
-    Cond_PMF_list[[i]] <- data_3
+    Cond_PMF_list[[i]] <- cbind(tmp %>% slice(1:nrow(data_2)) %>% dplyr::select(`1st_network`, Region), data_2)
   }
   
-  Cond_PMF_final <- rbindlist(Cond_PMF_list) %>%
+  Cond_PMF_final <- rbindlist(Cond_PMF_list) %>% 
     # Identify each region with a unique label
     mutate(helper_vector = rep(seq(nrow(.)))) %>%
     unite(., Region, c("Region", "helper_vector"), remove = FALSE) %>%
     # Transform  back to an alluvial format
     pivot_longer(
-      cols = c("23", "56"),
+      cols = c(cluster1, cluster2),
       names_to = "cluster",
-      values_to = colnames(type_func_df[,4])
+      values_to = colnames(type_func_df[4])
     )
   
   library(ggalluvial)
   
-  if (colnames(type_func_df[,4]) == "Hub_consensus") {
+  if (colnames(type_func_df[4]) == "Hub_consensus") {
     display_cluster <- Cond_PMF_final %>%
       filter(grepl(list_RSN, `1st_network`)) %>% 
       group_by(cluster, Hub_consensus) %>%
@@ -116,4 +115,5 @@ trajectory <- function(type_func_df, list_RSN) {
 # Pick the appropriate dataframe - modular_KL_2 or interareal_KL_2
 # Pick the desired RSN - to be specified in a grepl format e.g., "DMN|FPN|Language"
 
-trajectory(modular_KL_2, "DMN|Language")
+trajectory(modular_KL_2, "23.5", "56", "DMN")
+

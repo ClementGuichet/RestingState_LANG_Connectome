@@ -22,19 +22,18 @@ source("_radarplotting_function.R")
 ################################################################################
 # Post-clustering analysis -----------------
 ################################################################################
-data_post_clustering %>%
+data_post_clustering %>% 
   group_by(cluster) %>%
   get_summary_stats(Age, type = "full")
 
 # Removing cluster of outliers confirmed by robust ILR-PCA/mahalanobis distance and clustering
 data_post_clustering <- data_post_clustering %>%
-  filter(cluster != "4") %>%
-  dplyr::select(-Isolate)
+  filter(cluster != "3") 
 
 data_post_clustering <- data_post_clustering %>%
-  mutate(cluster = ifelse(cluster == "1", "23",
+  mutate(cluster = ifelse(cluster == "1", "23.5",
     ifelse(cluster == "2", "56",
-      ifelse(cluster == "3", "25", 0)
+      ifelse(cluster == "4", "24.5", 0)
     )
   ))
 
@@ -43,20 +42,12 @@ data_post_clustering %>%
   count(Gender) %>%
   mutate(n = prop.table(n))
 
-# 1 23      F      0.542
-# 2 23      M      0.458
-# 3 25      F      0.652
-# 4 25      M      0.348
-# 5 56      F      0.375
-# 6 56      M      0.562
-# 7 56      NaN    0.0625
 
-
-a <- gghistogram(data_post_clustering %>% subset(cluster == "23"),
+a <- gghistogram(data_post_clustering %>% subset(cluster == "23.5"),
   x = "Age", y = "..density..", bins = 20,
   fill = "purple", add_density = TRUE
 ) + theme_pubclean()
-b <- gghistogram(data_post_clustering %>% subset(cluster == "25"),
+b <- gghistogram(data_post_clustering %>% subset(cluster == "24.5"),
   x = "Age", y = "..density..", bins = 20,
   fill = "purple", add_density = TRUE
 ) + theme_pubclean()
@@ -70,7 +61,7 @@ Rmisc::multiplot(a, b, c)
 # Final dataframe with only the subjects of chosen clusters, their hub regions and the RSNs -----
 
 # Retain only the rows specific of the two clusters
-tmp_cluster_0 <- data_post_clustering %>% subset(cluster == "23" | cluster == "56")
+tmp_cluster_0 <- data_post_clustering %>% subset(cluster == "23" | cluster == "65.5")
 # Get the associated Resting-state networks
 tmp_cluster_1 <- filter(data_functional_role, Subj_ID %in% tmp_cluster_0$Subj_ID)
 # Hub region specific to each subject yielded by hub detection procedure
@@ -136,7 +127,7 @@ ggplot(data_box, aes(x = Metrics, y = Metric_value)) +
 
 data_box_eff_size <- data_box %>%
   group_by(Metrics) %>%
-  rstatix::cohens_d(Metric_value ~ Median_Age, comparison = list(c("23", "56")), paired = FALSE, hedges.correction = TRUE) %>%
+  rstatix::cohens_d(Metric_value ~ Median_Age, comparison = list(c("23.5", "56")), paired = FALSE, hedges.correction = TRUE) %>%
   mutate(effsize = effsize * (-1))
 # filter(magnitude != "negligible")
 
@@ -161,7 +152,7 @@ geometric_all <- data_post_clustering %>%
   summarize_at(vars(Connector:Super_Bridge), funs(compositions::geometricmean(.)))
 
 Radar_functional_role_geometric_age <- data_post_clustering %>%
-  filter(cluster != "25") %>%
+  filter(cluster != "24.5") %>%
   dplyr::select(-Age) %>%
   group_by(cluster) %>%
   summarize_at(vars(Connector:Super_Bridge), funs(compositions::geometricmean(.))) %>%
@@ -190,7 +181,7 @@ legend(
 )
 
 Radar_functional_role_age <- data_post_clustering %>%
-  filter(cluster != "25") %>%
+  filter(cluster != "24.5") %>%
   dplyr::select(-Age) %>%
   group_by(cluster) %>%
   summarize_at(vars(Connector:Super_Bridge), funs(mean(.))) %>%
