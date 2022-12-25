@@ -90,6 +90,7 @@ data_cluster_efficiency <- data_functional_role %>%
   mutate_at(vars(Balance_eff), funs(. * 100))
 
 # Putting everything together
+# TPF at the Subject-level
 data_hubness_profile_Age_ind <- cbind(
   rbindlist(FR_list, fill = TRUE) %>%
     mutate_all(., ~ replace(., is.na(.), 0)) %>% mutate_at(vars(everything()), funs(. * 100)),
@@ -118,3 +119,13 @@ most_common_hubs <- rbindlist(Hub_selection) %>%
   arrange(desc(n)) %>%
   filter(n > 0.8) %>%
   mutate_at(vars(n), funs(. * 100))
+
+
+# Putting everything together
+# TPF at the Subject-level and the RSN-level
+TFP_RSN <- cbind(
+  rbindlist(FR_list, fill = TRUE) %>%
+    mutate_all(., ~ replace(., is.na(.), 0)) %>% mutate_at(vars(everything()), funs(. * 100)),
+  data_functional_role %>% group_by(Subj_ID, Gender, `1st_network`) %>% summarise_at(vars(Age), mean) %>% arrange(Subj_ID, `1st_network`),
+  Balance_eff = data_cluster_efficiency$Balance_eff
+)
