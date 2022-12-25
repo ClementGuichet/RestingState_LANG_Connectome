@@ -86,10 +86,10 @@ data_functional_role <- data_bind_PC_Wz %>%
   # Normalizing at the community level with the affiliation vector from consensus clustering
   group_by(Consensus_vector_0.15) %>%
   mutate(zPC_cons = as.numeric(scale(PC_cons))) %>%
-  mutate(Hub_consensus = ifelse(zPC_cons > 0 & Within_module_z_cons > 0, "Connector",
-    ifelse(zPC_cons > 0 & Within_module_z_cons < 0, "Satellite",
-      ifelse(zPC_cons < 0 & Within_module_z_cons > 0, "Provincial",
-        ifelse(zPC_cons < 0 & Within_module_z_cons < 0, "Peripheral", "Isolate")
+  mutate(Hub_consensus = ifelse(zPC_cons > 1e-5 & Within_module_z_cons > 1e-5, "Connector",
+    ifelse(zPC_cons > 1e-5 & Within_module_z_cons < 1e-5, "Satellite",
+      ifelse(zPC_cons < 1e-5 & Within_module_z_cons > 1e-5, "Provincial",
+        ifelse(zPC_cons < 1e-5 & Within_module_z_cons < 1e-5, "Peripheral", "Isolate")
       )
     )
   )) %>%
