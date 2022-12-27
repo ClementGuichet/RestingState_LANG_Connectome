@@ -1,5 +1,5 @@
 rm(list=ls())
-source("_07_ENtropy.R")
+source("_07_Entropy.R")
 
 # ******************************************************************************
 # Most likely trajector with Conditional PMFs
@@ -36,7 +36,8 @@ trajectory <- function(type_func_df, cluster1, cluster2, list_RSN) {
   Cond_PMF_list <- list()
   for (i in 1:length(Cond_PMF)) {
     tmp <- rbindlist(Cond_PMF[i])
-    data <- outer(tmp[,4] %>% as.matrix(), tmp[,5] %>% as.matrix()) %>% as.data.frame()
+    # Beware of the order here, first young then old
+    data <- outer(tmp[,5] %>% as.matrix(), tmp[,4] %>% as.matrix()) %>% as.data.frame()
     if (colnames(type_func_df[4]) == "Hub_consensus") {
       colnames(data) <- c("Connector", "Peripheral", "Provincial", "Satellite")
       rownames(data) <- c("Connector", "Peripheral", "Provincial", "Satellite")
@@ -67,13 +68,13 @@ trajectory <- function(type_func_df, cluster1, cluster2, list_RSN) {
       filter(grepl(list_RSN, `1st_network`)) %>% 
       group_by(Age_group, Hub_consensus) %>%
       summarize(s = n()) %>%
-      arrange(Age_group, desc(Hub_consensus)) %>%
+      arrange(desc(Age_group), desc(Hub_consensus)) %>%
       .$Hub_consensus
     
     alluvial_cluster <- ggplot(
       Cond_PMF_final %>% 
         filter(grepl(list_RSN, `1st_network`)),
-      aes(x = Age_group, stratum = Hub_consensus, alluvium = Region, fill = Hub_consensus)
+      aes(x = forcats::fct_rev(Age_group), stratum = Hub_consensus, alluvium = Region, fill = Hub_consensus)
     ) +
       geom_flow(alpha = .7, curve_type = "arctangent", width = .2, na.rm = TRUE) +
       geom_stratum(alpha = .8) +
@@ -91,13 +92,13 @@ trajectory <- function(type_func_df, cluster1, cluster2, list_RSN) {
       filter(grepl(list_RSN, `1st_network`)) %>% 
       group_by(Age_group, Bridgeness) %>%
       summarize(s = n()) %>%
-      arrange(Age_group, desc(Bridgeness)) %>%
+      arrange(desc(Age_group), desc(Bridgeness)) %>%
       .$Bridgeness
     
     alluvial_cluster <- ggplot(
       Cond_PMF_final %>% 
         filter(grepl(list_RSN, `1st_network`)),
-      aes(x = Age_group, stratum = Bridgeness, alluvium = Region, fill = Bridgeness)
+      aes(x = forcats::fct_rev(Age_group), stratum = Bridgeness, alluvium = Region, fill = Bridgeness)
     ) +
       geom_flow(alpha = .7, curve_type = "arctangent", width = .2, na.rm = TRUE) +
       geom_stratum(alpha = .8) +
@@ -115,5 +116,5 @@ trajectory <- function(type_func_df, cluster1, cluster2, list_RSN) {
 # Pick the appropriate dataframe - modular_KL_2 or interareal_KL_2
 # Pick the desired RSN - to be specified in a grepl format e.g., "DMN|FPN|Language"
 
-trajectory(modular_KL_2, "Young", "Old", "DMN")
+trajectory(modular_KL_2, "Young", "Old", "Language")
 
