@@ -1,6 +1,6 @@
 rm(list=ls())
 
-source("_05_Age_effect_post_clustering.R")
+source("_06_Post_clustering.R")
 
 library(philentropy)
 
@@ -10,60 +10,46 @@ library(philentropy)
 
 # Evolution of within-RSN variability between clusters
 gJSD_heuristic <- function(cluster1, cluster2) {
-  # Retain only the rows specific of the two clusters
-  tmp_cluster_0 <- data_post_clustering %>% subset(cluster == cluster1 | cluster == cluster2)
-  # Get the associated Resting-state networks
-  tmp_cluster_1 <- filter(data_functional_role, Subj_ID %in% tmp_cluster_0$Subj_ID)
-  # Hub region specific to each subject yielded by hub detection procedure
-  data_hub_selection_per_subject <- rbindlist(Hub_selection)
-  # Select the subjects from the clusters
-  data_hub_selection_cluster <- filter(
-    data_hub_selection_per_subject,
-    Subj_ID %in% tmp_cluster_1$Subj_ID
-  )
-  tmp_cluster_final <- merge(data_hub_selection_cluster, tmp_cluster_0 %>%
-                               dplyr::select(Subj_ID, cluster),
-                             by = "Subj_ID"
-  )
+  data_cluster_selection(cluster1, cluster2)
   
   modular_gJSD_2 <- tmp_cluster_final %>%
-    group_by(`1st_network`, Region, cluster, Subj_ID, Hub_consensus) %>%
+    group_by(`1st_network`, Region, Age_group, Subj_ID, Hub_consensus) %>%
     summarise(n = n()) %>%
     mutate(freq = n / sum(n)) %>%
     dplyr::select(-n) %>%
     spread(Hub_consensus, freq) %>%
     mutate_all(., ~replace(., is.na(.), 0)) %>% 
-    group_by(`1st_network`, Region, cluster) %>%
+    group_by(`1st_network`, Region, Age_group) %>%
     summarise_at(vars(Connector:Satellite), mean) %>% 
     ungroup() %>%
-    arrange(cluster, `1st_network`) %>% 
+    arrange(Age_group, `1st_network`) %>% 
   
   # modular_gJSD_2 <- cbind(
-  #   modular_gJSD_1 %>% dplyr::select(`1st_network`:cluster),
+  #   modular_gJSD_1 %>% dplyr::select(`1st_network`:Age_group),
   #   multRepl(modular_gJSD_1 %>% dplyr::select(Connector:Satellite),
   #            label = 0, dl = rep(1, 5), frac = 1e-5
   #   )
   # ) %>%
   #   ungroup() %>%
     pivot_longer(
-      cols = !c("1st_network", "Region", "cluster"),
+      cols = !c("1st_network", "Region", "Age_group"),
       names_to = "Hub_consensus", values_to = "freq"
     )
   
   modular_gJSD_split <- modular_gJSD_2 %>%
     ungroup() %>%
-    group_by(cluster, `1st_network`, .add = TRUE) %>%
+    group_by(Age_group, `1st_network`, .add = TRUE) %>%
     group_split()
   
   gJSD_list <- list()
   for (i in 1:length(modular_gJSD_split)) {
     tmp <- rbindlist(modular_gJSD_split[i]) %>%
-      group_by(cluster,`1st_network`, Region, Hub_consensus) %>%
+      group_by(Age_group,`1st_network`, Region, Hub_consensus) %>%
       summarize_at(vars(freq), mean) %>%
       spread(Hub_consensus, freq) %>%
       remove_rownames() %>%
       column_to_rownames("Region") %>% 
-      dplyr::select(-c(`1st_network`, cluster))
+      dplyr::select(-c(`1st_network`, Age_group))
     gJSD <- philentropy::gJSD(tmp %>% as.matrix())
     gJSD_list[[i]] <- gJSD
   }
@@ -71,47 +57,47 @@ gJSD_heuristic <- function(cluster1, cluster2) {
   modular_gJSD_3 <<- t(rbindlist(list(gJSD_list))) %>% 
     as.data.frame() %>% 
     plyr::rename(c("V1" = "Generalized_Jensen_Shannon_divergence")) %>% 
-    cbind(., modular_gJSD_2 %>% group_by(cluster, `1st_network`) %>% 
+    cbind(., modular_gJSD_2 %>% group_by(Age_group, `1st_network`) %>% 
             summarize_at(vars(freq), mean))
   
-  interareal_gJSD_1 <- tmp_cluster_final %>%
-    group_by(`1st_network`, Region, cluster, Subj_ID, Bridgeness) %>%
+  interareal_gJSD_2 <- tmp_cluster_final %>%
+    group_by(`1st_network`, Region, Age_group, Subj_ID, Bridgeness) %>%
     summarise(n = n()) %>%
     mutate(freq = n / sum(n)) %>%
     dplyr::select(-n) %>%
     spread(Bridgeness, freq) %>%
     mutate_all(., ~ replace(., is.na(.), 0)) %>%
-    group_by(`1st_network`, Region, cluster) %>%
+    group_by(`1st_network`, Region, Age_group) %>%
     summarize_at(vars(Global_Bridge:Super_Bridge), mean) %>% 
     ungroup() %>%
-    arrange(cluster, `1st_network`)
+    arrange(Age_group, `1st_network`) %>% 
   
-  interareal_gJSD_2 <- cbind(
-    interareal_gJSD_1 %>% dplyr::select(`1st_network`:cluster),
-    multRepl(interareal_gJSD_1 %>% dplyr::select(Global_Bridge:Super_Bridge),
-             label = 0, dl = rep(1, 4), frac = 1e-5
-    )
-  ) %>%
+  # interareal_gJSD_2 <- cbind(
+  #   interareal_gJSD_1 %>% dplyr::select(`1st_network`:Age_group),
+  #   multRepl(interareal_gJSD_1 %>% dplyr::select(Global_Bridge:Super_Bridge),
+  #            label = 0, dl = rep(1, 4), frac = 1e-5
+  #   )
+  # ) %>%
     ungroup() %>%
     pivot_longer(
-      cols = !c("1st_network", "Region", "cluster"),
+      cols = !c("1st_network", "Region", "Age_group"),
       names_to = "Bridgeness", values_to = "freq"
     ) 
   
   interareal_gJSD_split <- interareal_gJSD_2 %>%
     ungroup() %>%
-    group_by(cluster, `1st_network`, .add = TRUE) %>%
+    group_by(Age_group, `1st_network`, .add = TRUE) %>%
     group_split()
   
   gJSD_list_bis <- list()
   for (i in 1:length(interareal_gJSD_split)) {
     tmp <- rbindlist(interareal_gJSD_split[i]) %>%
-      group_by(cluster, `1st_network`, Region, Bridgeness) %>%
+      group_by(Age_group, `1st_network`, Region, Bridgeness) %>%
       summarize_at(vars(freq), mean) %>%
       spread(Bridgeness, freq) %>%
       remove_rownames() %>%
       column_to_rownames("Region") %>% 
-      dplyr::select(-c(`1st_network`, cluster))
+      dplyr::select(-c(`1st_network`, Age_group))
     gJSD <- philentropy::gJSD(tmp %>% as.matrix())
     gJSD_list_bis[[i]] <- gJSD
   }
@@ -119,12 +105,12 @@ gJSD_heuristic <- function(cluster1, cluster2) {
   interareal_gJSD_3 <<- t(rbindlist(list(gJSD_list_bis))) %>%
     as.data.frame() %>%
     plyr::rename(c("V1" = "Generalized_Jensen_Shannon_divergence")) %>% 
-    cbind(., interareal_gJSD_2 %>% group_by(cluster, `1st_network`) %>% 
+    cbind(., interareal_gJSD_2 %>% group_by(Age_group, `1st_network`) %>% 
             summarize_at(vars(freq), mean))
   
   Radar_RSN_modular_gJSD <- modular_gJSD_3 %>% dplyr::select(-freq) %>% 
     spread(`1st_network`, Generalized_Jensen_Shannon_divergence) %>% 
-    remove_rownames() %>% column_to_rownames("cluster")
+    remove_rownames() %>% column_to_rownames("Age_group")
   
   radarplotting_overlap(Radar_RSN_modular_gJSD, 1, 0, 1, 1,
                         alpha = 0.3, label_size = 1, title_fill = "Relative entropy of the modular role probability mass functions (PMF) between regions within each RSN\n (Generalized Jensen-Shannon divergence)",
@@ -140,7 +126,7 @@ gJSD_heuristic <- function(cluster1, cluster2) {
   
   Radar_RSN_interareal_gJSD <- interareal_gJSD_3 %>% dplyr::select(-freq) %>%
     spread(`1st_network`, Generalized_Jensen_Shannon_divergence) %>% 
-    remove_rownames() %>% column_to_rownames("cluster")
+    remove_rownames() %>% column_to_rownames("Age_group")
   
   radarplotting_overlap(Radar_RSN_interareal_gJSD, 1, 0, 1, 1,
                         alpha = 0.3, label_size = 1, title_fill = "Relative entropy of the interareal role probability mass functions (PMF) between regions within each RSN\n (Generalized Jensen-Shannon divergence)",
@@ -162,43 +148,27 @@ gJSD_heuristic <- function(cluster1, cluster2) {
     mutate(between_cluster_var = Generalized_Jensen_Shannon_divergence / lag(Generalized_Jensen_Shannon_divergence)) %>% 
     na.omit()
 }
-gJSD_heuristic("23.5", "56")
+gJSD_heuristic("Young", "Old")
 
-# Strength of between-cluster reconfiguration
+# Strength of between-Age_group reconfiguration
 KL_heuristic <- function(cluster1, cluster2, norm = NULL) {
   
-  # Final dataframe with only the subjects of chosen clusters, their hub regions and the RSNs -----
-  
-  # Retain only the rows specific of the two clusters
-  tmp_cluster_0 <- data_post_clustering %>% subset(cluster == cluster1 | cluster == cluster2)
-  # Get the associated Resting-state networks
-  tmp_cluster_1 <- filter(data_functional_role, Subj_ID %in% tmp_cluster_0$Subj_ID)
-  # Hub region specific to each subject yielded by hub detection procedure
-  data_hub_selection_per_subject <- rbindlist(Hub_selection)
-  # Select the subjects from the clusters
-  data_hub_selection_cluster <- filter(
-    data_hub_selection_per_subject,
-    Subj_ID %in% tmp_cluster_1$Subj_ID
-  )
-  tmp_cluster_final <- merge(data_hub_selection_cluster, tmp_cluster_0 %>%
-                               dplyr::select(Subj_ID, cluster),
-                             by = "Subj_ID"
-  )
+  data_cluster_selection(cluster1, cluster2)
   # For modular-level functional roles (i.e., Connector, Satellite ...)
   modular_KL_1 <- tmp_cluster_final %>%
-    group_by(`1st_network`, Region, cluster, Subj_ID, Hub_consensus) %>%
+    group_by(`1st_network`, Region, Age_group, Subj_ID, Hub_consensus) %>%
     summarise(n = n()) %>%
     mutate(freq = n / sum(n)) %>%
     dplyr::select(-n) %>% 
     spread(Hub_consensus, freq) %>%
     mutate_all(., ~ replace(., is.na(.), 0)) %>% 
-    group_by(`1st_network`, Region, cluster) %>%
+    group_by(`1st_network`, Region, Age_group) %>%
     summarize_at(vars(Connector:Satellite), mean) %>% 
     ungroup() %>% 
     arrange(Region)
   
   # modular_KL_2 <<- cbind(
-  #   modular_KL_1 %>% dplyr::select(`1st_network`:cluster),
+  #   modular_KL_1 %>% dplyr::select(`1st_network`:Age_group),
   #   # Replace essential zeros with 1e-5
   #   multRepl(modular_KL_1 %>% dplyr::select(Connector:Satellite),
   #            label = 0, dl = rep(1, 5), frac = 1e-5
@@ -206,7 +176,7 @@ KL_heuristic <- function(cluster1, cluster2, norm = NULL) {
   # )  %>% 
   modular_KL_2 <<- modular_KL_1 %>% 
     pivot_longer(
-      cols = !c("1st_network", "Region", "cluster"),
+      cols = !c("1st_network", "Region", "Age_group"),
       names_to = "Hub_consensus", values_to = "freq"
     )
   
@@ -219,10 +189,10 @@ KL_heuristic <- function(cluster1, cluster2, norm = NULL) {
   KL_list <- list()
   for (i in 1:length(modular_KL_split)) {
     tmp <- rbindlist(modular_KL_split[i]) %>%
-      dplyr::select(cluster, Hub_consensus, freq) %>%
+      dplyr::select(Age_group, Hub_consensus, freq) %>%
       spread(Hub_consensus, freq) %>%
       remove_rownames() %>%
-      column_to_rownames("cluster")
+      column_to_rownames("Age_group")
     KL_list[[i]] <- philentropy::KL(tmp %>% as.matrix())
   }
   
@@ -237,25 +207,26 @@ KL_heuristic <- function(cluster1, cluster2, norm = NULL) {
   
   # For interareal-level functional roles (i.e., Global Bridge, Local Bridge ...)
   interareal_KL_1 <- tmp_cluster_final %>%
-    group_by(`1st_network`, Region, cluster, Subj_ID, Bridgeness) %>%
+    group_by(`1st_network`, Region, Age_group, Subj_ID, Bridgeness) %>%
     summarise(n = n()) %>%
     mutate(freq = n / sum(n)) %>%
     dplyr::select(-n) %>%
     spread(Bridgeness, freq) %>%
     mutate_all(., ~ replace(., is.na(.), 0)) %>%
-    group_by(`1st_network`, Region, cluster) %>%
+    group_by(`1st_network`, Region, Age_group) %>%
     summarize_at(vars(Global_Bridge:Super_Bridge), mean) %>% 
     ungroup() %>%
     arrange(Region)
   
-  interareal_KL_2 <<- cbind(
-    interareal_KL_1 %>% dplyr::select(`1st_network`:cluster),
-    multRepl(interareal_KL_1 %>% dplyr::select(Global_Bridge:Super_Bridge),
-             label = 0, dl = rep(1, 4), frac = 1e-5
-    )
-  ) %>%
+  interareal_KL_2 <<- interareal_KL_1 %>% 
+  #   cbind(
+  #   interareal_KL_1 %>% dplyr::select(`1st_network`:Age_group),
+  #   multRepl(interareal_KL_1 %>% dplyr::select(Global_Bridge:Super_Bridge),
+  #            label = 0, dl = rep(1, 4), frac = 1e-5
+  #   )
+  # ) %>%
     pivot_longer(
-      cols = !c("1st_network", "Region", "cluster"),
+      cols = !c("1st_network", "Region", "Age_group"),
       names_to = "Bridgeness", values_to = "freq"
     )
   
@@ -267,10 +238,10 @@ KL_heuristic <- function(cluster1, cluster2, norm = NULL) {
   KL_list_bis <- list()
   for (i in 1:length(interareal_KL_split)) {
     tmp <- rbindlist(interareal_KL_split[i]) %>%
-      dplyr::select(cluster, Bridgeness, freq) %>%
+      dplyr::select(Age_group, Bridgeness, freq) %>%
       spread(Bridgeness, freq) %>%
       remove_rownames() %>%
-      column_to_rownames("cluster")
+      column_to_rownames("Age_group")
     KL_list_bis[[i]] <- philentropy::KL(tmp %>% as.matrix())
   }
   
@@ -332,7 +303,7 @@ KL_heuristic <- function(cluster1, cluster2, norm = NULL) {
     rownames(Radar_KL) <- c("Modular-level\n PMF", 
                             "Interareal-level\n PMF")
     
-    radarplotting_overlap(Radar_KL, 2, 0, 3, 1,
+    radarplotting_overlap(Radar_KL, 2, 0, 1, 1,
                           alpha = 0.3, label_size = 1, title_fill = "Unnormalized relative entropy of the functional role probability mass functions (PMF) between the two clusters\n Computed for the PMF of each region between clusters and averaged at the RSN level",
                           palette = RColorBrewer::brewer.pal(8, "Dark2")
     )
@@ -348,8 +319,7 @@ KL_heuristic <- function(cluster1, cluster2, norm = NULL) {
 
 # If normalized, then the radar plot displays the RSN with the most amount of topological reconfiguration
 # combined with high specificity: all regions within the RSN reconfigure in unison towards a specific functional role
-KL_heuristic("23.5", "56", norm = TRUE)
-
+KL_heuristic("Young", "Old", norm = FALSE)
 # Arbitrary threshold to pick the RSN to investigate the difference in proportions
 median(as.numeric(Radar_RSN_modular))
 median(as.numeric(Radar_RSN_interareal))
@@ -378,13 +348,13 @@ consistency <- function(type_func_df, cluster1, cluster2) {
   # 4*4 functional roles = 16 possible trajectories for each region
   if (colnames(type_func_df[4]) == "Hub_consensus") {
     Cond_PMF <- type_func_df %>%
-      spread(cluster, freq) %>%
+      spread(Age_group, freq) %>%
       arrange(Hub_consensus) %>% 
       group_by(Region, .add = TRUE) %>%
       group_split()
   } else {
     Cond_PMF <- type_func_df %>%
-      spread(cluster, freq) %>%
+      spread(Age_group, freq) %>%
       arrange(Bridgeness) %>% 
       group_by(Region, .add = TRUE) %>%
       group_split()
@@ -461,7 +431,7 @@ consistency <- function(type_func_df, cluster1, cluster2) {
   )
 }
 
-consistency(modular_KL_2, "23.5", "56")
+consistency(modular_KL_2, "Young", "Old")
 
   
   # # Count the number of similar trajectories

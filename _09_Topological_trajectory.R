@@ -1,5 +1,5 @@
 rm(list=ls())
-source("_05_Age_effect_Kullback_Leibler.R")
+source("_07_ENtropy.R")
 
 # ******************************************************************************
 # Most likely trajector with Conditional PMFs
@@ -20,13 +20,13 @@ trajectory <- function(type_func_df, cluster1, cluster2, list_RSN) {
   # For each region, find the most probable trajectory
   if (colnames(type_func_df[4]) == "Hub_consensus") {
     Cond_PMF <- type_func_df %>%
-      spread(cluster, freq) %>%
+      spread(Age_group, freq) %>%
       arrange(Hub_consensus) %>% 
       group_by(Region, .add = TRUE) %>%
       group_split()
   } else {
     Cond_PMF <- type_func_df %>%
-      spread(cluster, freq) %>%
+      spread(Age_group, freq) %>%
       arrange(Bridgeness) %>% 
       group_by(Region, .add = TRUE) %>%
       group_split()
@@ -56,7 +56,7 @@ trajectory <- function(type_func_df, cluster1, cluster2, list_RSN) {
     # Transform  back to an alluvial format
     pivot_longer(
       cols = c(cluster1, cluster2),
-      names_to = "cluster",
+      names_to = "Age_group",
       values_to = colnames(type_func_df[4])
     )
   
@@ -65,15 +65,15 @@ trajectory <- function(type_func_df, cluster1, cluster2, list_RSN) {
   if (colnames(type_func_df[4]) == "Hub_consensus") {
     display_cluster <- Cond_PMF_final %>%
       filter(grepl(list_RSN, `1st_network`)) %>% 
-      group_by(cluster, Hub_consensus) %>%
+      group_by(Age_group, Hub_consensus) %>%
       summarize(s = n()) %>%
-      arrange(cluster, desc(Hub_consensus)) %>%
+      arrange(Age_group, desc(Hub_consensus)) %>%
       .$Hub_consensus
     
     alluvial_cluster <- ggplot(
       Cond_PMF_final %>% 
         filter(grepl(list_RSN, `1st_network`)),
-      aes(x = cluster, stratum = Hub_consensus, alluvium = Region, fill = Hub_consensus)
+      aes(x = Age_group, stratum = Hub_consensus, alluvium = Region, fill = Hub_consensus)
     ) +
       geom_flow(alpha = .7, curve_type = "arctangent", width = .2, na.rm = TRUE) +
       geom_stratum(alpha = .8) +
@@ -89,15 +89,15 @@ trajectory <- function(type_func_df, cluster1, cluster2, list_RSN) {
   } else {
     display_cluster <- Cond_PMF_final %>%
       filter(grepl(list_RSN, `1st_network`)) %>% 
-      group_by(cluster, Bridgeness) %>%
+      group_by(Age_group, Bridgeness) %>%
       summarize(s = n()) %>%
-      arrange(cluster, desc(Bridgeness)) %>%
+      arrange(Age_group, desc(Bridgeness)) %>%
       .$Bridgeness
     
     alluvial_cluster <- ggplot(
       Cond_PMF_final %>% 
         filter(grepl(list_RSN, `1st_network`)),
-      aes(x = cluster, stratum = Bridgeness, alluvium = Region, fill = Bridgeness)
+      aes(x = Age_group, stratum = Bridgeness, alluvium = Region, fill = Bridgeness)
     ) +
       geom_flow(alpha = .7, curve_type = "arctangent", width = .2, na.rm = TRUE) +
       geom_stratum(alpha = .8) +
@@ -115,5 +115,5 @@ trajectory <- function(type_func_df, cluster1, cluster2, list_RSN) {
 # Pick the appropriate dataframe - modular_KL_2 or interareal_KL_2
 # Pick the desired RSN - to be specified in a grepl format e.g., "DMN|FPN|Language"
 
-trajectory(modular_KL_2, "23.5", "56", "DMN")
+trajectory(modular_KL_2, "Young", "Old", "DMN")
 

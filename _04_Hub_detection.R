@@ -32,17 +32,17 @@ source("_radarplotting_function.R")
 
 # Topologico-functional profile with hub detection at the individual level -------------------
 
-top <- 131 * 0.2
+top <- 131
 
 Top_metric_Age_ind <- data_functional_role %>%
   group_by(Subj_ID, Region) %>%
-  summarize_at(vars(zK, Within_module_z_cons, zPC_cons, zBT, zFlow), mean) %>%
-  # mutate(across(degree:PC, ~ rank(-.x), .names = "{.col}_rank")) %>%
+  summarize_at(vars(zK, Within_module_z_cons, zPC_cons, zBT, zFlow), mean) %>% 
+  # mutate(across(degree:PC, ~ rank(-.x), .names = "{.col}_rank")) %>% 
   pivot_longer(
     cols = !c("Subj_ID", "Region"),
     names_to = "Metric_name",
     values_to = "Metric_value"
-  ) %>%
+  ) %>% 
   group_by(Subj_ID, Metric_name, .add = TRUE) %>%
   group_split() %>%
   map_dfr(. %>% slice_max(Metric_value, n = top) %>%
@@ -58,7 +58,7 @@ for (i in 1:length(Top_metric_Age_ind)) {
   tmp <- data_functional_role %>%
     filter(Region %in% Hub_df$Region) %>%
     filter(Subj_ID == i) %>%
-    dplyr::select(Subj_ID, Region, `1st_network`, Consensus_vector_0.15, Hub_consensus, Bridgeness, zFlow)
+    dplyr::select(Subj_ID, Region, `1st_network`, Consensus_vector_0.15, Hub_consensus, Bridgeness)
   Hub_selection[[i]] <- tmp
 
   # Here I compute the proportion of functional roles regarding centrality and information flow
@@ -91,35 +91,35 @@ data_cluster_efficiency <- data_functional_role %>%
 
 # Putting everything together
 # TPF at the Subject-level
-data_hubness_profile_Age_ind <- cbind(
+TFP_General <- cbind(
   rbindlist(FR_list, fill = TRUE) %>%
     mutate_all(., ~ replace(., is.na(.), 0)) %>% mutate_at(vars(everything()), funs(. * 100)),
   data_functional_role %>% group_by(Subj_ID, Gender) %>% summarise_at(vars(Age), mean) %>% arrange(Subj_ID),
   Balance_eff = data_cluster_efficiency$Balance_eff
 )
-
-data_hubness_profile_Age_ind %>%
-  pivot_longer(
-    cols = !c("Subj_ID", "Age", "Gender"),
-    names_to = "Functional_role",
-    values_to = "Score"
-  ) %>%
-  ggplot(aes(Age, Score, color = Functional_role)) +
-  geom_point(size = 2, alpha = 0.2) +
-  geom_jitter(height = 0.05, alpha = 0.2) +
-  geom_smooth() +
-  ggpubr::theme_pubr() +
-  ggtitle("Evolution of functional roles across adult lifespan")
-
-
-# What are the most common hubs across subjects?
-most_common_hubs <- rbindlist(Hub_selection) %>%
-  dplyr::count(Region, `1st_network`) %>%
-  mutate(n = n / 72) %>%
-  arrange(desc(n)) %>%
-  filter(n > 0.8) %>%
-  mutate_at(vars(n), funs(. * 100))
-
+# 
+# data_hubness_profile_Age_ind %>%
+#   pivot_longer(
+#     cols = !c("Subj_ID", "Age", "Gender"),
+#     names_to = "Functional_role",
+#     values_to = "Score"
+#   ) %>%
+#   ggplot(aes(Age, Score, color = Functional_role)) +
+#   geom_point(size = 2, alpha = 0.2) +
+#   geom_jitter(height = 0.05, alpha = 0.2) +
+#   geom_smooth() +
+#   ggpubr::theme_pubr() +
+#   ggtitle("Evolution of functional roles across adult lifespan")
+# 
+# 
+# # What are the most common hubs across subjects?
+# most_common_hubs <- rbindlist(Hub_selection) %>%
+#   dplyr::count(Region, `1st_network`) %>%
+#   mutate(n = n / 72) %>%
+#   arrange(desc(n)) %>%
+#   filter(n > 0.8) %>%
+#   mutate_at(vars(n), funs(. * 100))
+# 
 
 # Putting everything together
 # TPF at the Subject-level and the RSN-level
@@ -129,3 +129,4 @@ TFP_RSN <- cbind(
   data_functional_role %>% group_by(Subj_ID, Gender, `1st_network`) %>% summarise_at(vars(Age), mean) %>% arrange(Subj_ID, `1st_network`),
   Balance_eff = data_cluster_efficiency$Balance_eff
 )
+
