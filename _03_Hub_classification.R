@@ -73,6 +73,7 @@ data_bind_PC_Wz <- cbind(data_full_thresholded,
 
 data_functional_role <- data_bind_PC_Wz %>%
   # Normalizing at the connectomic level
+  group_by(Subj_ID) %>% 
   mutate(zK = as.numeric(scale(degree))) %>%
   mutate(zBT = as.numeric(scale(Betweenness))) %>%
   mutate(zFlow = as.numeric(scale(Flow_coeff))) %>%
@@ -84,7 +85,7 @@ data_functional_role <- data_bind_PC_Wz %>%
     )
   )) %>%
   # Normalizing at the community level with the affiliation vector from consensus clustering
-  group_by(Consensus_vector_0.15) %>%
+  group_by(Subj_ID, Consensus_vector_0.15) %>%
   mutate(zPC_cons = as.numeric(scale(PC_cons))) %>%
   mutate(Hub_consensus = ifelse(zPC_cons > 1e-5 & Within_module_z_cons > 1e-5, "Connector",
     ifelse(zPC_cons > 1e-5 & Within_module_z_cons < 1e-5, "Satellite",
