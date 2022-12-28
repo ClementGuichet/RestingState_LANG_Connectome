@@ -16,74 +16,35 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
     mutate(freq = n / sum(n)) %>%
     spread(Hub_consensus, freq) %>%
     dplyr::select(-n) %>%
-    mutate_all(., ~ replace(., is.na(.), 0)) %>%
-    group_by(`1st_network`, Region, Age_group) %>%
-    # Computing the PMFs for each region for each Age_group for each functional role
+    mutate_all(., ~ replace(., is.na(.), 0)) %>% 
+    group_by(`1st_network`, Subj_ID, Age_group) %>%
     summarize_at(vars(Connector:Satellite), mean) %>%
-    ungroup()
+    ungroup() %>% 
+    pivot_longer(cols = !c("1st_network", "Subj_ID", "Age_group"), names_to = "Hub_consensus", values_to = "freq")
   
-    # Replace essential zeros at the regional and Age_group level
-  replacement_a1 <- multRepl(delta_proportion_a1 %>%
-                               dplyr::select(Connector:Satellite), dl = rep(1, 4), label = 0, frac = 1e-5)
+  count_zero <- delta_proportion_a1 %>% 
+    group_by(`1st_network`, Hub_consensus) %>% count(Age_group, freq) %>% 
+    group_by(`1st_network`, Age_group, Hub_consensus) %>% 
+    mutate(n = prop.table(n)) %>% 
+    filter(freq != 0) %>% 
+    group_by(`1st_network`, Age_group, Hub_consensus) %>% 
+    summarize_at(vars(n), sum)
   
-  delta_proportion_a <<- cbind(delta_proportion_a1 %>%
-                                 dplyr::select(`1st_network`:Age_group), replacement_a1) %>%
-    pivot_longer(cols = !c("1st_network", "Region", "Age_group"), names_to = "Hub_consensus", values_to = "freq") %>%
+  
+  delta_proportion_a <- delta_proportion_a1 %>% 
+    filter(freq != 0) %>% 
     # Compute the geometric mean for each RSN
     group_by(`1st_network`, Age_group, Hub_consensus) %>%
-    summarise_at(vars(freq), funs(geometricmean(.)))  %>% 
-    group_by(`1st_network`, Hub_consensus) %>%
-    # Take the log ratio of geometric mean between clusters
-    # 
-    # This is the same as taking the mean log ratio of all regions:
-    # 
-    # group_by(`1st_network`, Region, Hub_consensus) %>%
-    #   mutate(delta_freq = log(freq / lag(freq))) %>% 
-    #   dplyr::select(-Age_group) %>%
-    #   na.omit() %>% 
-    #   group_by(`1st_network`, Hub_consensus) %>%
-    #   summarize_at(vars(delta_freq), mean)
-    mutate(delta_freq = log(freq / lead(freq))) %>% 
-    dplyr::select(-c(freq, Age_group)) %>%
-    na.omit()
-  
-  
-  delta_proportion_b1 <- tmp_cluster_final %>%
-    group_by(`1st_network`, Region, Subj_ID, Age_group, Bridgeness) %>%
-    summarise(n = n()) %>%
-    mutate(freq = n / sum(n)) %>%
-    spread(Bridgeness, freq) %>%
-    dplyr::select(-n) %>%
-    mutate_all(., ~ replace(., is.na(.), 0)) %>%
-    group_by(`1st_network`, Region, Age_group) %>%
-    summarize_at(vars(Global_Bridge:Super_Bridge), mean) %>%
-    ungroup()
-  
-  replacement_b1 <- multRepl(delta_proportion_b1 %>%
-                               dplyr::select(Global_Bridge:Super_Bridge), dl = rep(1, 4), label = 0, frac = 1e-5)
-  
-  delta_proportion_b <<- cbind(delta_proportion_b1 %>%
-                                 dplyr::select(`1st_network`:Age_group), replacement_b1) %>%
-    pivot_longer(cols = !c("1st_network", "Region", "Age_group"), names_to = "Bridgeness", values_to = "freq") %>%
-    # Compute the geometric mean for each RSN
-    group_by(`1st_network`, Age_group, Bridgeness) %>%
     summarise_at(vars(freq), funs(geometricmean(.))) %>% 
-    group_by(`1st_network`, Bridgeness) %>%
-    # Take the log ratio of geometric mean between clusters
-    # 
-    # This is the same as taking the mean log ratio of all regions:
-    # 
-    # group_by(`1st_network`, Region, Bridgeness) %>%
-    #   mutate(delta_freq = log(freq / lag(freq))) %>% 
-    #   dplyr::select(-Age_group) %>%
-    #   na.omit() %>% 
-    #   group_by(`1st_network`, Bridgeness) %>%
-    #   summarize_at(vars(delta_freq), mean)
-    mutate(delta_freq = log(freq / lead(freq))) %>% 
+    merge(., count_zero, by = c("1st_network", "Age_group", "Hub_consensus")) %>% 
+    mutate(bi_geometric_mean = freq*n) %>% 
+    group_by(`1st_network`, Hub_consensus) %>%
+    mutate(delta_freq = log(bi_geometric_mean / lead(bi_geometric_mean))) %>% 
     dplyr::select(-c(freq, Age_group)) %>%
     na.omit()
   
-  Radar_functional_role_RSN_delta_a <-
+  
+  Radar_functional_role_RSN_delta_a <<-
     delta_proportion_a %>%
     dplyr::select(`1st_network`, Hub_consensus, delta_freq) %>%
     filter(grepl(divergent_RSN_modular, `1st_network`)) %>%
@@ -94,7 +55,7 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
   
   radarplotting_overlap(Radar_functional_role_RSN_delta_a, max, min, 1, 1,
                         alpha = alpha, label_size = 1,
-                        title_fill = paste("Log ratio of the clusters' geometric mean proportion of modular roles\n A positive ratio reflects a higher proportion for the older Age_group"),
+                        title_fill = paste("Log ratio of bi-geometric mean proportions of modular roles"),
                         palette = RColorBrewer::brewer.pal(8, "Dark2")
   )
   
@@ -104,7 +65,44 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
     text.col = "black", cex = 1, pt.cex = 2
   )
   
-  Radar_functional_role_RSN_delta_b <-
+  
+  
+  ##############################################################################
+  ##############################################################################
+  delta_proportion_b1 <- tmp_cluster_final %>%
+    group_by(`1st_network`, Region, Subj_ID, Age_group, Bridgeness) %>%
+    summarise(n = n()) %>%
+    mutate(freq = n / sum(n)) %>%
+    spread(Bridgeness, freq) %>%
+    dplyr::select(-n) %>%
+    mutate_all(., ~ replace(., is.na(.), 0)) %>% 
+    group_by(`1st_network`, Subj_ID, Age_group) %>%
+    summarize_at(vars(Global_Bridge:Super_Bridge), mean) %>%
+    ungroup() %>% 
+    pivot_longer(cols = !c("1st_network", "Subj_ID", "Age_group"), names_to = "Bridgeness", values_to = "freq")
+  
+  count_zero <- delta_proportion_b1 %>% 
+    group_by(`1st_network`, Bridgeness) %>% count(Age_group, freq) %>% 
+    group_by(`1st_network`, Age_group, Bridgeness) %>% 
+    mutate(n = prop.table(n)) %>% 
+    filter(freq != 0) %>% 
+    group_by(`1st_network`, Age_group, Bridgeness) %>% 
+    summarize_at(vars(n), sum)
+  
+  
+  delta_proportion_b <<- delta_proportion_b1 %>% 
+    filter(freq != 0) %>% 
+    # Compute the geometric mean for each RSN
+    group_by(`1st_network`, Age_group, Bridgeness) %>%
+    summarise_at(vars(freq), funs(geometricmean(.))) %>% 
+    merge(., count_zero, by = c("1st_network", "Age_group", "Bridgeness")) %>% 
+    mutate(bi_geometric_mean = freq*n) %>% 
+    group_by(`1st_network`, Bridgeness) %>%
+    mutate(delta_freq = log(bi_geometric_mean / lead(bi_geometric_mean))) %>% 
+    dplyr::select(-c(freq, Age_group)) %>%
+    na.omit()
+  
+  Radar_functional_role_RSN_delta_b <<-
     delta_proportion_b %>%
     dplyr::select(`1st_network`, Bridgeness, delta_freq) %>%
     filter(grepl(divergent_RSN_interareal, `1st_network`)) %>%
@@ -114,7 +112,7 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
   
   radarplotting_overlap(Radar_functional_role_RSN_delta_b, max2, min2, 1, 1,
                         alpha = alpha, label_size = 1,
-                        title_fill = paste("Log ratios of geometric mean proportion of modular roles\n A positive ratio reflects a higher proportion for the older Age_group"),
+                        title_fill = paste("Log ratios of bi-geometric mean proportions of interareal roles"),
                         palette = RColorBrewer::brewer.pal(8, "Dark2")
   )
   
@@ -124,129 +122,10 @@ interaction_Age_FuncRole_RSN <- function(cluster1, cluster2, max, min, max2, min
     text.col = "black", cex = 1, pt.cex = 2
   )
 }
-interaction_Age_FuncRole_RSN("Young", "Old", 2, -2, 2, -2, 0.1,
+interaction_Age_FuncRole_RSN("Young", "Old", 1, -1, 1, -1, 0.1,
                              divergent_RSN_modular = "Auditory|CON|DMN|FPN|Language|SMN",
                              divergent_RSN_interareal = "Auditory|CON|DMN|FPN|Language|SMN"
 )
-
-# Difference in the proportion of each functional role within each community for the two selected clusters
-interaction_Age_FuncRole_community <- function(cluster1, cluster2, max, min, max2, min2, alpha, divergent_RSN_modular, divergent_RSN_interareal) {
-  
-  data_cluster_selection(cluster1, cluster2)
-  
-  delta_proportion_a1 <- tmp_cluster_final %>%
-    group_by(Consensus_vector_0.15, Region, Subj_ID, Age_group, Hub_consensus) %>%
-    summarise(n = n()) %>%
-    mutate(freq = n / sum(n)) %>%
-    spread(Hub_consensus, freq) %>%
-    dplyr::select(-n) %>%
-    mutate_all(., ~ replace(., is.na(.), 0)) %>%
-    group_by(Consensus_vector_0.15, Region, Age_group) %>%
-    # Computing the PMFs for each region for each Age_group for each functional role
-    summarize_at(vars(Connector:Satellite), mean) %>%
-    ungroup()
-  
-  # Replace essential zeros at the regional and Age_group level
-  replacement_a1 <- multRepl(delta_proportion_a1 %>%
-                               dplyr::select(Connector:Satellite), dl = rep(1, 4), label = 0, frac = 1e-5)
-  
-  delta_proportion_a <<- cbind(delta_proportion_a1 %>%
-                                 dplyr::select(Consensus_vector_0.15:Age_group), replacement_a1) %>%
-    pivot_longer(cols = !c("Consensus_vector_0.15", "Region", "Age_group"), names_to = "Hub_consensus", values_to = "freq") %>%
-    # Compute the geometric mean for each RSN
-    group_by(Consensus_vector_0.15, Age_group, Hub_consensus) %>%
-    summarise_at(vars(freq), funs(geometricmean(.)))  %>% 
-    group_by(Consensus_vector_0.15, Hub_consensus) %>%
-    # Take the log ratio of geometric mean between clusters
-    # 
-    # This is the same as taking the mean log ratio of all regions:
-    # 
-    # group_by(Consensus_vector_0.15, Region, Hub_consensus) %>%
-    #   mutate(delta_freq = log(freq / lag(freq))) %>% 
-    #   dplyr::select(-Age_group) %>%
-    #   na.omit() %>% 
-    #   group_by(Consensus_vector_0.15, Hub_consensus) %>%
-    #   summarize_at(vars(delta_freq), mean)
-    mutate(delta_freq = log(freq / lead(freq))) %>% 
-    dplyr::select(-c(freq, Age_group)) %>%
-    na.omit()
-  
-  
-  delta_proportion_b1 <- tmp_cluster_final %>%
-    group_by(Consensus_vector_0.15, Region, Subj_ID, Age_group, Bridgeness) %>%
-    summarise(n = n()) %>%
-    mutate(freq = n / sum(n)) %>%
-    spread(Bridgeness, freq) %>%
-    dplyr::select(-n) %>%
-    mutate_all(., ~ replace(., is.na(.), 0)) %>%
-    group_by(Consensus_vector_0.15, Region, Age_group) %>%
-    summarize_at(vars(Global_Bridge:Super_Bridge), mean) %>%
-    ungroup()
-  
-  replacement_b1 <- multRepl(delta_proportion_b1 %>%
-                               dplyr::select(Global_Bridge:Super_Bridge), dl = rep(1, 4), label = 0, frac = 1e-5)
-  
-  delta_proportion_b <<- cbind(delta_proportion_b1 %>%
-                                 dplyr::select(Consensus_vector_0.15:Age_group), replacement_b1) %>%
-    pivot_longer(cols = !c("Consensus_vector_0.15", "Region", "Age_group"), names_to = "Bridgeness", values_to = "freq") %>%
-    # Compute the geometric mean for each RSN
-    group_by(Consensus_vector_0.15, Age_group, Bridgeness) %>%
-    summarise_at(vars(freq), funs(geometricmean(.))) %>% 
-    group_by(Consensus_vector_0.15, Bridgeness) %>%
-    # Take the log ratio of geometric mean between clusters
-    # 
-    # This is the same as taking the mean log ratio of all regions:
-    # 
-    # group_by(Consensus_vector_0.15, Region, Bridgeness) %>%
-    #   mutate(delta_freq = log(freq / lag(freq))) %>% 
-    #   dplyr::select(-Age_group) %>%
-    #   na.omit() %>% 
-    #   group_by(Consensus_vector_0.15, Bridgeness) %>%
-    #   summarize_at(vars(delta_freq), mean)
-    mutate(delta_freq = log(freq / lead(freq))) %>% 
-    dplyr::select(-c(freq, Age_group)) %>%
-    na.omit()
-  
-  Radar_functional_role_RSN_delta_a <-
-    delta_proportion_a %>%
-    dplyr::select(Consensus_vector_0.15, Hub_consensus, delta_freq) %>%
-    spread(Consensus_vector_0.15, delta_freq) %>%
-    remove_rownames() %>%
-    column_to_rownames(var = "Hub_consensus")
-  
-  
-  radarplotting_overlap(Radar_functional_role_RSN_delta_a, max, min, 1, 1,
-                        alpha = alpha, label_size = 1,
-                        title_fill = paste("Log ratio of the clusters' geometric mean proportion of modular roles\n A positive ratio reflects a higher proportion for the older Age_group"),
-                        palette = RColorBrewer::brewer.pal(8, "Dark2")
-  )
-  
-  legend(
-    x = "bottomleft", legend = rownames(Radar_functional_role_RSN_delta_a), horiz = TRUE,
-    bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
-    text.col = "black", cex = 1, pt.cex = 2
-  )
-  
-  Radar_functional_role_RSN_delta_b <-
-    delta_proportion_b %>%
-    dplyr::select(Consensus_vector_0.15, Bridgeness, delta_freq) %>%
-    spread(Consensus_vector_0.15, delta_freq) %>%
-    remove_rownames() %>%
-    column_to_rownames(var = "Bridgeness")
-  
-  radarplotting_overlap(Radar_functional_role_RSN_delta_b, max2, min2, 1, 1,
-                        alpha = alpha, label_size = 1,
-                        title_fill = paste("Log ratios of geometric mean proportion of modular roles\n A positive ratio reflects a higher proportion for the older Age_group"),
-                        palette = RColorBrewer::brewer.pal(8, "Dark2")
-  )
-  
-  legend(
-    x = "bottomleft", legend = rownames(Radar_functional_role_RSN_delta_b), horiz = TRUE,
-    bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
-    text.col = "black", cex = 1, pt.cex = 2
-  )
-}
-interaction_Age_FuncRole_community("Young", "Old", 1, -1, 1, -1, 0.1)
 
 
 ################################################################################
