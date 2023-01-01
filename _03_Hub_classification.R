@@ -73,7 +73,7 @@ data_bind_PC_Wz <- cbind(data_full_thresholded,
 
 data_functional_role <- data_bind_PC_Wz %>%
   # Normalizing at the connectomic level
-  group_by(Subj_ID) %>% 
+  group_by(Subj_ID) %>%
   mutate(zK = as.numeric(scale(degree))) %>%
   mutate(zBT = as.numeric(scale(Betweenness))) %>%
   mutate(zFlow = as.numeric(scale(Flow_coeff))) %>%

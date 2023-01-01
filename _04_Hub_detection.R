@@ -32,17 +32,17 @@ source("_radarplotting_function.R")
 
 # Topologico-functional profile with hub detection at the individual level -------------------
 
-top <- 131
+top <- 131 * 0.1
 
 Top_metric_Age_ind <- data_functional_role %>%
   group_by(Subj_ID, Region) %>%
-  summarize_at(vars(zK, Within_module_z_cons, zPC_cons, zBT, zFlow), mean) %>% 
-  # mutate(across(degree:PC, ~ rank(-.x), .names = "{.col}_rank")) %>% 
+  summarize_at(vars(zK, Within_module_z_cons, zPC_cons, zBT, zFlow), mean) %>%
+  # mutate(across(degree:PC, ~ rank(-.x), .names = "{.col}_rank")) %>%
   pivot_longer(
     cols = !c("Subj_ID", "Region"),
     names_to = "Metric_name",
     values_to = "Metric_value"
-  ) %>% 
+  ) %>%
   group_by(Subj_ID, Metric_name, .add = TRUE) %>%
   group_split() %>%
   map_dfr(. %>% slice_max(Metric_value, n = top) %>%
@@ -97,7 +97,7 @@ TFP_General <- cbind(
   data_functional_role %>% group_by(Subj_ID, Gender) %>% summarise_at(vars(Age), mean) %>% arrange(Subj_ID),
   Balance_eff = data_cluster_efficiency$Balance_eff
 )
-# 
+#
 # data_hubness_profile_Age_ind %>%
 #   pivot_longer(
 #     cols = !c("Subj_ID", "Age", "Gender"),
@@ -110,8 +110,8 @@ TFP_General <- cbind(
 #   geom_smooth() +
 #   ggpubr::theme_pubr() +
 #   ggtitle("Evolution of functional roles across adult lifespan")
-# 
-# 
+#
+#
 # # What are the most common hubs across subjects?
 # most_common_hubs <- rbindlist(Hub_selection) %>%
 #   dplyr::count(Region, `1st_network`) %>%
@@ -119,7 +119,7 @@ TFP_General <- cbind(
 #   arrange(desc(n)) %>%
 #   filter(n > 0.8) %>%
 #   mutate_at(vars(n), funs(. * 100))
-# 
+#
 
 # Putting everything together
 # TPF at the Subject-level and the RSN-level
@@ -129,4 +129,3 @@ TFP_RSN <- cbind(
   data_functional_role %>% group_by(Subj_ID, Gender, `1st_network`) %>% summarise_at(vars(Age), mean) %>% arrange(Subj_ID, `1st_network`),
   Balance_eff = data_cluster_efficiency$Balance_eff
 )
-

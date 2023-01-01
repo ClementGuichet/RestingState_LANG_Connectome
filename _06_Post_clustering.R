@@ -9,30 +9,27 @@ library(data.table)
 library(RColorBrewer)
 library(rstatix)
 library(Rmisc)
-library(rgl)
-library(fitdistrplus)
-library(sigclust2)
 
 
 rm(list = ls())
 
 source("_05_Clustering.R")
 source("_radarplotting_function.R")
-
+source("_geometricmeanCruz.R")
 ################################################################################
 # Post-clustering analysis -----------------
 ################################################################################
-data_post_clustering %>% 
+data_post_clustering %>%
   group_by(cluster) %>%
   get_summary_stats(Age, type = "full")
 
 
 data_post_clustering <- data_post_clustering %>%
-  mutate(Age_group = ifelse(cluster == 2, "Young", ifelse(cluster == 3, "Old", 0)))
+  mutate(Age_group = ifelse(cluster == 1, "Young", ifelse(cluster == 3, "Old", 0)))
 
 data_post_clustering %>%
   group_by(cluster) %>%
-  count(Gender) %>% 
+  count(Gender) %>%
   mutate(n = prop.table(n))
 
 
@@ -62,8 +59,8 @@ data_cluster_selection <- function(cluster1, cluster2) {
     Subj_ID %in% tmp_cluster_1$Subj_ID
   )
   tmp_cluster_final <<- merge(data_hub_selection_cluster, tmp_cluster_0 %>%
-                               dplyr::select(Subj_ID, Age_group),
-                             by = "Subj_ID"
+    dplyr::select(Subj_ID, Age_group),
+  by = "Subj_ID"
   )
 }
 
@@ -134,12 +131,13 @@ ggdotchart(
 # equivalent to CLR-transform, preserves unit-sum constraint and removes value-range restriction
 
 geometric_all <- data_post_clustering %>%
-  summarize_at(vars(Connector:Super_Bridge), funs(compositions::geometricmean(.)))
+  summarize_at(vars(Connector:Super_Bridge), funs(geomMeanExtension(., epsilon = 1e-5)))
 
 Radar_functional_role_geometric_age <- data_post_clustering %>%
+  filter(grepl("Young|Old", Age_group)) %>%
   dplyr::select(-Age) %>%
   group_by(Age_group) %>%
-  summarize_at(vars(Connector:Super_Bridge), funs(compositions::geometricmean(.))) %>%
+  summarize_at(vars(Connector:Super_Bridge), funs(geomMeanExtension(., epsilon = 1e-5))) %>%
   mutate(Connector = log(Connector / geometric_all$Connector)) %>%
   mutate(Provincial = log(Provincial / geometric_all$Provincial)) %>%
   mutate(Satellite = log(Satellite / geometric_all$Satellite)) %>%
@@ -147,25 +145,25 @@ Radar_functional_role_geometric_age <- data_post_clustering %>%
   mutate(Global_Bridge = log(Global_Bridge / geometric_all$Global_Bridge)) %>%
   mutate(Local_Bridge = log(Local_Bridge / geometric_all$Local_Bridge)) %>%
   mutate(Super_Bridge = log(Super_Bridge / geometric_all$Super_Bridge)) %>%
-  mutate(Not_a_Bridge = log(Not_a_Bridge / geometric_all$Not_a_Bridge)) %>% 
+  mutate(Not_a_Bridge = log(Not_a_Bridge / geometric_all$Not_a_Bridge)) %>%
   remove_rownames() %>%
   column_to_rownames(var = "Age_group")
 
-radarplotting_overlap(Radar_functional_role_geometric_age, 1, -1, 1, 1,
+radarplotting_overlap(Radar_functional_role_geometric_age, 2, -1, 1, 1,
   alpha = 0.5, label_size = 1,
   title_fill = "Topologico-functional profile of each cluster",
   palette = RColorBrewer::brewer.pal(8, "Dark2")
 )
 
 legend(
-  x = "topright", title = "Median age of each cluster\n Based on Model-based clustering\n with principal balances",
+  x = "topright", title = "Based on Gaussian mixture modeling\n with principal balances",
   legend = rownames(Radar_functional_role_geometric_age), horiz = TRUE,
   bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
   text.col = "black", cex = 1, pt.cex = 2
 )
 
 Radar_functional_role_age <- data_post_clustering %>%
-  filter(Age_group != "Middle") %>%
+  filter(Age_group != "0") %>%
   dplyr::select(-Age) %>%
   group_by(Age_group) %>%
   summarize_at(vars(Connector:Super_Bridge), funs(mean(.))) %>%
@@ -173,13 +171,14 @@ Radar_functional_role_age <- data_post_clustering %>%
   column_to_rownames(var = "Age_group")
 
 radarplotting_overlap(Radar_functional_role_age, 50, 0, 1, 1,
-  alpha = 0.05, label_size = 1,
+  alpha = 0.5, label_size = 1,
   title_fill = "Topologico-functional profile of each cluster",
   palette = RColorBrewer::brewer.pal(8, "Dark2")
 )
 
 legend(
-  x = "topright", title = "Median age of each cluster\n Based on ILR-transformed Wald Hierarchichal clustering",
+  x = "topright",
+  title = "Based on Gaussian mixture modeling\n with principal balances",
   legend = rownames(Radar_functional_role_geometric_age), horiz = TRUE,
   bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
   text.col = "black", cex = 1, pt.cex = 2
@@ -212,7 +211,8 @@ radarplotting_overlap(Radar_hub_RSN, 30, 0, 1, 1,
 )
 
 legend(
-  x = "topright", title = "Median age of each Age_group\n Based on Ward Hierarchichal clustering (FWER corrected)\n (Kimes et al., 2017)",
+  x = "topright",
+  title = "Based on Gaussian mixture modeling\n with principal balances",
   legend = rownames(Radar_hub_RSN), horiz = TRUE,
   bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
   text.col = "black", cex = 1, pt.cex = 2
@@ -239,11 +239,9 @@ radarplotting_overlap(Radar_hub_community, 50, 0, 1, 1,
 )
 
 legend(
-  x = "topright", title = "Median age of each Age_group\n Based on Ward Hierarchichal clustering (FWER corrected)\n (Kimes et al., 2017)",
+  x = "topright",
+  title = "Based on Gaussian mixture modeling\n with principal balances",
   legend = rownames(Radar_hub_community), horiz = TRUE,
   bty = "n", pch = 20, col = RColorBrewer::brewer.pal(8, "Dark2"),
   text.col = "black", cex = 1, pt.cex = 2
 )
-
-
-
